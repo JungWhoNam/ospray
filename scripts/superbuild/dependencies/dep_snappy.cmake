@@ -10,7 +10,7 @@ else()
 endif()
 
 if (NOT WIN32)
-  set(PATCH sed -ie "s/size_t AdvanceToNextTag/inline \\0/" snappy.cc)
+  set(PATCH sed -ie "s/size_t AdvanceToNextTag/inline size_t AdvanceToNextTag/" snappy.cc)
 endif()
 
 ExternalProject_Add(${COMPONENT_NAME}
