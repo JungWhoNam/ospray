@@ -2,41 +2,44 @@
 ## SPDX-License-Identifier: Apache-2.0
 
 macro(ospray_install_namelink NAME)
-  get_filename_component(TARGET_NAME ${NAME} NAME) # strip path
-  set(LIB_SUFFIX ${CMAKE_SHARED_LIBRARY_SUFFIX})
-  # strip version and lib suffix
-  if(APPLE)
-    set(LIBREGEX "(.+)[.]([0-9]+)([.][0-9]+[.][0-9]+)${LIB_SUFFIX}")
+  # get the full path with symlinks resolved
+  if (IS_SYMLINK ${NAME})
+    get_filename_component(REAL_PATH ${NAME} REALPATH)
   else()
-    set(LIBREGEX "(.+)${LIB_SUFFIX}[.]([0-9]+)([.][0-9]+[.][0-9]+)")
+    set(REAL_PATH ${NAME})
   endif()
-  string(REGEX REPLACE ${LIBREGEX} "\\1" BASE_LIB_NAME ${TARGET_NAME})
-  if (CMAKE_MATCH_COUNT GREATER 2)
-    if(APPLE)
-      set(SYMLINK ${BASE_LIB_NAME}.${CMAKE_MATCH_2}${LIB_SUFFIX})
+
+  # strip path and get the library suffix
+  get_filename_component(TARGET_NAME ${REAL_PATH} NAME)
+  set(LIB_SUFFIX ${CMAKE_SHARED_LIBRARY_SUFFIX})
+
+  # tokenize the file name
+  string(REPLACE "." ";" VERSION_LIST ${TARGET_NAME})  
+  list(LENGTH VERSION_LIST VERSION_LIST_LENGTH)
+  list(GET VERSION_LIST 0 BASE_LIB_NAME)
+
+  # if the file name has a major version number, create a major version suffixed symlink
+  if (${VERSION_LIST_LENGTH} GREATER 2)
+    if (APPLE)
+      list(GET VERSION_LIST 1 VERSION_MAJOR)
     else()
-      set(SYMLINK ${BASE_LIB_NAME}${LIB_SUFFIX}.${CMAKE_MATCH_2})
+      list(GET VERSION_LIST 2 VERSION_MAJOR)
     endif()
+
+    set(SYMLINK ${BASE_LIB_NAME}.${VERSION_MAJOR}${LIB_SUFFIX})
     execute_process(COMMAND "${CMAKE_COMMAND}" -E
-        create_symlink ${TARGET_NAME} ${CMAKE_CURRENT_BINARY_DIR}/${SYMLINK})
+        create_symlink ${REAL_PATH} ${CMAKE_CURRENT_BINARY_DIR}/${SYMLINK})
     install(PROGRAMS ${CMAKE_CURRENT_BINARY_DIR}/${SYMLINK} ${ARGN}
         DESTINATION ${CMAKE_INSTALL_LIBDIR} COMPONENT redist)
-    set(TARGET_NAME ${SYMLINK})
   endif()
-   
-  # also create a major version suffixed symlink
-  if(APPLE)
-    set(LIBREGEX "(.+)[.]([0-9]+)${LIB_SUFFIX}")
-  else()
-    set(LIBREGEX "(.+)${LIB_SUFFIX}[.]([0-9]+)")
-  endif()
-  string(REGEX REPLACE ${LIBREGEX} "\\1" BASE_LIB_NAME ${TARGET_NAME})
-  if (CMAKE_MATCH_COUNT)
-    set(SYMLINK ${CMAKE_CURRENT_BINARY_DIR}/${BASE_LIB_NAME}${LIB_SUFFIX})
+
+  # also create a symlink with just a base lib name
+  if (${VERSION_LIST_LENGTH} GREATER 1)
+    set(SYMLINK ${BASE_LIB_NAME}${LIB_SUFFIX})
     execute_process(COMMAND "${CMAKE_COMMAND}" -E
-        create_symlink ${TARGET_NAME} ${SYMLINK})
-    install(PROGRAMS ${SYMLINK} ${ARGN} DESTINATION ${CMAKE_INSTALL_LIBDIR}
-        COMPONENT redist)
+        create_symlink ${REAL_PATH} ${CMAKE_CURRENT_BINARY_DIR}/${SYMLINK})
+    install(PROGRAMS ${CMAKE_CURRENT_BINARY_DIR}/${SYMLINK} ${ARGN}
+        DESTINATION ${CMAKE_INSTALL_LIBDIR} COMPONENT redist)
   endif()
 endmacro()
 
