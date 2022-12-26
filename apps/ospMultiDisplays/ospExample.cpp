@@ -29,10 +29,8 @@ int main(int argc, char **argv)
 
   initializeOSPRay(0, {}, false);
   {
-    bool denoiser = ospLoadModule("denoiser") == OSP_NO_ERROR;
-
     auto glfwOSPRayWindow =
-        make_unique<GLFWOSPRayWindow>(vec2i(1024, 768), denoiser);
+        make_unique<GLFWOSPRayWindow>(vec2i(1024, 768));
     glfwOSPRayWindow->mainLoop();
     glfwOSPRayWindow.reset();
   }
