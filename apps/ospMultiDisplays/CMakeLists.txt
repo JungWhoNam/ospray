@@ -9,6 +9,7 @@ endif()
 set(OpenGL_GL_PREFERENCE "LEGACY")
 find_package(OpenGL 2 REQUIRED)
 find_package(glfw3 REQUIRED)
+find_package(MPI REQUIRED)
 
 add_executable(ospMPIMultiDisplays
   ${OSPRAY_RESOURCE}
@@ -24,7 +25,11 @@ PRIVATE
   ospray_imgui
   glfw
   ${OPENGL_LIBRARIES}
+  ${MPI_C_LIBRARIES}
 )
+
+target_include_directories(ospMPIMultiDisplays PRIVATE
+  $<BUILD_INTERFACE:${MPI_C_INCLUDE_PATH}>)
 
 ospray_sign_target(ospMPIMultiDisplays)
 

@@ -24,6 +24,20 @@ enum class OSPRayRendererType
   OTHER
 };
 
+struct WindowState
+{
+  bool quit;
+  // bool cameraChanged;
+  // bool fbSizeChanged;
+  // int spp;
+  // rkcommon::math::vec2i windowSize;
+  // rkcommon::math::vec3f eyePos;
+  // rkcommon::math::vec3f lookDir;
+  // rkcommon::math::vec3f upDir;
+
+  WindowState();
+};
+
 class GLFWOSPRayWindow
 {
  public:
@@ -126,4 +140,10 @@ class GLFWOSPRayWindow
 
   // FPS measurement of last frame
   float latestFPS{0.f};
+
+  int mpiRank = -1;
+  int mpiWorldSize = -1;
+
+  // The window state to be sent out over MPI to the other rendering processes
+  WindowState windowState;
 };

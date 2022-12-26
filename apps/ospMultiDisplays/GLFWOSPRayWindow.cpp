@@ -13,6 +13,8 @@
 #include <iostream>
 #include <stdexcept>
 #include <vector>
+// mpi
+#include <mpi.h>
 
 // on Windows often only GL 1.1 headers are present
 #ifndef GL_CLAMP_TO_BORDER
@@ -124,9 +126,17 @@ void error_callback(int error, const char *desc)
 
 GLFWOSPRayWindow *GLFWOSPRayWindow::activeWindow = nullptr;
 
+WindowState::WindowState()
+  : quit(false)
+    // : quit(false), cameraChanged(false), fbSizeChanged(false), spp(1)
+{}
+
 GLFWOSPRayWindow::GLFWOSPRayWindow(const vec2i &windowSize, bool denoiser)
     : denoiserAvailable(denoiser)
 {
+  MPI_Comm_rank(MPI_COMM_WORLD, &mpiRank);
+  MPI_Comm_size(MPI_COMM_WORLD, &mpiWorldSize);
+
   if (activeWindow != nullptr) {
     throw std::runtime_error("Cannot create more than one GLFWOSPRayWindow!");
   }
@@ -141,14 +151,25 @@ GLFWOSPRayWindow::GLFWOSPRayWindow(const vec2i &windowSize, bool denoiser)
   }
 
   glfwWindowHint(GLFW_SRGB_CAPABLE, GLFW_TRUE);
-  // create GLFW window
-  glfwWindow = glfwCreateWindow(
-      windowSize.x, windowSize.y, "OSPRay Tutorial", nullptr, nullptr);
+  glfwWindowHint(GLFW_DECORATED, mpiRank == 0 ? GLFW_TRUE : GLFW_FALSE);
 
+  int numTilesWidth = mpiWorldSize - 1;
+  int numTilesHeight = 1;
+  int screenWidth = 1792 * 1.f;
+  int screenHeight = 1120; // 1920
+
+  // create GLFW window 
+  glfwWindow = glfwCreateWindow(
+      mpiRank == 0 ? windowSize.x : screenWidth / numTilesWidth,
+      mpiRank == 0 ? windowSize.y : screenHeight / numTilesHeight, 
+      "OSPRay Tutorial", nullptr, nullptr);
   if (!glfwWindow) {
     glfwTerminate();
     throw std::runtime_error("Failed to create GLFW window!");
   }
+
+  if (mpiRank > 0)
+    glfwSetWindowPos(glfwWindow, (screenWidth / numTilesWidth) * (mpiRank - 1), 0);
 
   // make the window's context current
   glfwMakeContextCurrent(glfwWindow);
@@ -178,19 +199,21 @@ GLFWOSPRayWindow::GLFWOSPRayWindow(const vec2i &windowSize, bool denoiser)
     }
   });
 
-  glfwSetKeyCallback(
-      glfwWindow, [](GLFWwindow *, int key, int, int action, int) {
-        if (action == GLFW_PRESS) {
-          switch (key) {
-          case GLFW_KEY_G:
-            activeWindow->showUi = !(activeWindow->showUi);
-            break;
-          case GLFW_KEY_Q:
-            g_quitNextFrame = true;
-            break;
+  if (mpiRank == 0) {
+    glfwSetKeyCallback(
+        glfwWindow, [](GLFWwindow *, int key, int, int action, int) {
+          if (action == GLFW_PRESS) {
+            switch (key) {
+            case GLFW_KEY_G:
+              activeWindow->showUi = !(activeWindow->showUi);
+              break;
+            case GLFW_KEY_Q:
+              g_quitNextFrame = true;
+              break;
+            }
           }
-        }
-      });
+        });
+  }
 
   glfwSetMouseButtonCallback(
       glfwWindow, [](GLFWwindow *, int button, int action, int /*mods*/) {
@@ -253,15 +276,26 @@ void GLFWOSPRayWindow::mainLoop()
   // continue until the user closes the window
   startNewOSPRayFrame();
 
-  while (!glfwWindowShouldClose(glfwWindow) && !g_quitNextFrame) {
+  while (true) {
+    MPI_Bcast(&windowState, sizeof(WindowState), MPI_BYTE, 0, MPI_COMM_WORLD);
+    if (windowState.quit) {
+      g_quitNextFrame = true;
+      break;
+    }
+
     ImGui_ImplGlfwGL3_NewFrame();
 
     display();
 
+    
     // poll and process events
     glfwPollEvents();
-  }
 
+    if (mpiRank == 0) {  
+      windowState.quit = glfwWindowShouldClose(glfwWindow) || g_quitNextFrame;
+    }
+  }
+  
   waitOnOSPRayFrame();
 }
 
