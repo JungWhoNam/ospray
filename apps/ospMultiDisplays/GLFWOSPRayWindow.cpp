@@ -171,7 +171,8 @@ GLFWOSPRayWindow::GLFWOSPRayWindow()
   windowState.rigTransform = arcballCamera->transform();
   windowState.sceneChanged = false;
   windowState.scene = scene;
-
+  showUi = mpiRank == 0;
+  
   // trigger window reshape events with current window size
   glfwGetFramebufferSize(glfwWindow, &this->windowSize.x, &this->windowSize.y);
   reshape(this->windowSize);
