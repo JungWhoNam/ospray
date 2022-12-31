@@ -73,7 +73,7 @@ void error_callback(int error, const char *desc)
 GLFWOSPRayWindow *GLFWOSPRayWindow::activeWindow = nullptr;
 
 WindowState::WindowState() 
-    : quit(false), rigChanged(false)
+    : quit(false), rigChanged(false), sceneChanged(false)
 {}
 
 GLFWOSPRayWindow::GLFWOSPRayWindow()
@@ -169,6 +169,8 @@ GLFWOSPRayWindow::GLFWOSPRayWindow()
   // set the initial state
   windowState.rigChanged = true;
   windowState.rigTransform = arcballCamera->transform();
+  windowState.sceneChanged = false;
+  windowState.scene = scene;
 
   // trigger window reshape events with current window size
   glfwGetFramebufferSize(glfwWindow, &this->windowSize.x, &this->windowSize.y);
@@ -338,6 +340,13 @@ void GLFWOSPRayWindow::startNewOSPRayFrame()
 {
   bool fbNeedsClear = false;
 
+  if (windowState.sceneChanged) {
+    windowState.sceneChanged = false;
+    scene = windowState.scene;
+    refreshScene(true);
+    fbNeedsClear = true;
+  }
+
   auto handles = objectsToCommit.consume();
   if (!handles.empty()) {
     for (auto &h : handles)
@@ -402,7 +411,8 @@ void GLFWOSPRayWindow::buildUI()
           nullptr,
           g_scenes.size())) {
     scene = g_scenes[whichScene];
-    refreshScene(true);
+    windowState.sceneChanged = true;
+    windowState.scene = scene;
   }
   ImGui::Separator();
 

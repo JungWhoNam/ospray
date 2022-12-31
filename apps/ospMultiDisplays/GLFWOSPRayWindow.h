@@ -22,7 +22,10 @@ struct WindowState
 
   bool rigChanged;
   AffineSpace3f rigTransform;
-  
+
+  bool sceneChanged;
+  std::string scene;
+
   WindowState();
 };
 
