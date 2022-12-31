@@ -200,7 +200,9 @@ void GLFWOSPRayWindow::mainLoop()
     startNewOSPRayFrame();
     waitOnOSPRayFrame();
 
-    ImGui_ImplGlfwGL3_NewFrame();
+    if (showUi) {
+      ImGui_ImplGlfwGL3_NewFrame();
+    }
 
     display();
 
