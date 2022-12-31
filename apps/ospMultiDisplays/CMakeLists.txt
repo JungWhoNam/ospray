@@ -16,6 +16,7 @@ add_executable(ospMPIMultiDisplays
   GLFWOSPRayWindow.cpp
   imgui_impl_glfw_gl3.cpp
   ospExample.cpp
+  OffAxisProjection.cpp
 )
 
 target_link_libraries(ospMPIMultiDisplays

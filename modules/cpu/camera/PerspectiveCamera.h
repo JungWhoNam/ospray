@@ -32,6 +32,10 @@ struct OSPRAY_SDK_INTERFACE PerspectiveCamera
   OSPStereoMode stereoMode{OSP_STEREO_NONE};
   float interpupillaryDistance{
       0.0635f}; // distance between the two cameras (stereo)
+  bool offAxisMode{false};
+  vec3f topLeft;
+  vec3f botLeft;
+  vec3f botRight;
 };
 
 } // namespace ospray

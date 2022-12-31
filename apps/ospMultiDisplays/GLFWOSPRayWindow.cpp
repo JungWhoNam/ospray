@@ -72,12 +72,11 @@ void error_callback(int error, const char *desc)
 
 GLFWOSPRayWindow *GLFWOSPRayWindow::activeWindow = nullptr;
 
-WindowState::WindowState()
-  : quit(false)
-    // : quit(false), cameraChanged(false), fbSizeChanged(false), spp(1)
+WindowState::WindowState() 
+    : quit(false), rigChanged(false)
 {}
 
-GLFWOSPRayWindow::GLFWOSPRayWindow(const vec2i &windowSize)
+GLFWOSPRayWindow::GLFWOSPRayWindow()
 {
   MPI_Comm_rank(MPI_COMM_WORLD, &mpiRank);
   MPI_Comm_size(MPI_COMM_WORLD, &mpiWorldSize);
@@ -95,26 +94,27 @@ GLFWOSPRayWindow::GLFWOSPRayWindow(const vec2i &windowSize)
     throw std::runtime_error("Failed to initialize GLFW!");
   }
 
+  // TODO get these information from a JSON file
+  int numTilesWidth = 2;
+  int numTilesHeight = 1;
+  int screenWidth = 1792;
+  int screenHeight = 1120;
+  int windowWidthRank0 = 1024;
+  int windowHeightRank0 = windowWidthRank0 * (screenHeight / (float) screenWidth);
+
+  windowSize.x = mpiRank == 0 ? windowWidthRank0 : screenWidth / numTilesWidth;
+  windowSize.y = mpiRank == 0 ? windowHeightRank0 : screenHeight / numTilesHeight;
+  
+  // create GLFW window 
   glfwWindowHint(GLFW_SRGB_CAPABLE, GLFW_TRUE);
   glfwWindowHint(GLFW_DECORATED, mpiRank == 0 ? GLFW_TRUE : GLFW_FALSE);
-
-  int numTilesWidth = mpiWorldSize - 1;
-  int numTilesHeight = 1;
-  int screenWidth = 1792 * 1.f;
-  int screenHeight = 1120; // 1920
-
-  // create GLFW window 
   glfwWindow = glfwCreateWindow(
-      mpiRank == 0 ? windowSize.x : screenWidth / numTilesWidth,
-      mpiRank == 0 ? windowSize.y : screenHeight / numTilesHeight, 
-      "OSPRay Tutorial", nullptr, nullptr);
+      windowSize.x, windowSize.y, "OSPRay Tutorial", nullptr, nullptr);
+  
   if (!glfwWindow) {
     glfwTerminate();
     throw std::runtime_error("Failed to create GLFW window!");
   }
-
-  if (mpiRank > 0)
-    glfwSetWindowPos(glfwWindow, (screenWidth / numTilesWidth) * (mpiRank - 1), 0);
 
   // make the window's context current
   glfwMakeContextCurrent(glfwWindow);
@@ -131,64 +131,48 @@ GLFWOSPRayWindow::GLFWOSPRayWindow(const vec2i &windowSize)
   glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
   glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
 
-  // set GLFW callbacks
-  glfwSetFramebufferSizeCallback(
-      glfwWindow, [](GLFWwindow *, int newWidth, int newHeight) {
-        activeWindow->reshape(vec2i{newWidth, newHeight});
-      });
-
-  glfwSetCursorPosCallback(glfwWindow, [](GLFWwindow *, double x, double y) {
-    ImGuiIO &io = ImGui::GetIO();
-    if (!activeWindow->showUi || !io.WantCaptureMouse) {
-      activeWindow->motion(vec2f{float(x), float(y)});
-    }
-  });
-
+  // further configure GLFW window based on rank
   if (mpiRank == 0) {
-    glfwSetKeyCallback(
-        glfwWindow, [](GLFWwindow *, int key, int, int action, int) {
-          if (action == GLFW_PRESS) {
-            switch (key) {
-            case GLFW_KEY_G:
-              activeWindow->showUi = !(activeWindow->showUi);
-              break;
-            case GLFW_KEY_Q:
-              g_quitNextFrame = true;
-              break;
-            }
-          }
-        });
+    glfwSetWindowAspectRatio(glfwWindow, screenWidth, screenHeight);
+    // set GLFW callbacks (only apply to rank 0)
+    glfwSetFramebufferSizeCallback(glfwWindow, [](GLFWwindow *, int newWidth, int newHeight) {
+      activeWindow->reshape(vec2i{newWidth, newHeight});
+    });
+    glfwSetCursorPosCallback(glfwWindow, [](GLFWwindow *, double x, double y) {
+      ImGuiIO &io = ImGui::GetIO();
+      if (!activeWindow->showUi || !io.WantCaptureMouse) {
+        activeWindow->motion(vec2f{float(x), float(y)});
+      }
+    });
+    glfwSetKeyCallback(glfwWindow, [](GLFWwindow *, int key, int, int action, int) {
+      if (action == GLFW_PRESS) {
+        switch (key) {
+        case GLFW_KEY_G:
+          activeWindow->showUi = !(activeWindow->showUi);
+          break;
+        case GLFW_KEY_Q:
+          g_quitNextFrame = true;
+          break;
+        }
+      }
+    });
+  }
+  else {
+    int x = (screenWidth / (float) numTilesWidth) * (mpiRank - 1);
+    int y = 0;
+    glfwSetWindowPos(glfwWindow, x, y);
   }
 
-  glfwSetMouseButtonCallback(
-      glfwWindow, [](GLFWwindow *, int button, int action, int /*mods*/) {
-        auto &w = *activeWindow;
-        if (button == GLFW_MOUSE_BUTTON_MIDDLE && action == GLFW_PRESS) {
-          auto mouse = activeWindow->previousMouse;
-          auto windowSize = activeWindow->windowSize;
-          const vec2f pos(mouse.x / static_cast<float>(windowSize.x),
-              1.f - mouse.y / static_cast<float>(windowSize.y));
-
-          auto res =
-              w.framebuffer.pick(w.renderer, w.camera, w.world, pos.x, pos.y);
-
-          if (res.hasHit) {
-            std::cout << "Picked geometry [inst: " << res.instance
-                      << ", model: " << res.model << ", prim: " << res.primID
-                      << "]" << std::endl;
-          }
-        }
-      });
-
   // OSPRay setup //
-
   refreshScene(true);
+
+  // set the initial state
+  windowState.rigChanged = true;
+  windowState.rigTransform = arcballCamera->transform();
 
   // trigger window reshape events with current window size
   glfwGetFramebufferSize(glfwWindow, &this->windowSize.x, &this->windowSize.y);
   reshape(this->windowSize);
-
-  commitOutstandingHandles();
 }
 
 GLFWOSPRayWindow::~GLFWOSPRayWindow()
@@ -205,30 +189,27 @@ GLFWOSPRayWindow *GLFWOSPRayWindow::getActiveWindow()
 
 void GLFWOSPRayWindow::mainLoop()
 {
-  // continue until the user closes the window
-  startNewOSPRayFrame();
-
   while (true) {
     MPI_Bcast(&windowState, sizeof(WindowState), MPI_BYTE, 0, MPI_COMM_WORLD);
     if (windowState.quit) {
-      g_quitNextFrame = true;
       break;
     }
+
+    startNewOSPRayFrame();
+    waitOnOSPRayFrame();
 
     ImGui_ImplGlfwGL3_NewFrame();
 
     display();
 
-    
     // poll and process events
     glfwPollEvents();
 
     if (mpiRank == 0) {  
       windowState.quit = glfwWindowShouldClose(glfwWindow) || g_quitNextFrame;
     }
+    MPI_Barrier(MPI_COMM_WORLD);
   }
-  
-  waitOnOSPRayFrame();
 }
 
 void GLFWOSPRayWindow::reshape(const vec2i &newWindowSize)
@@ -236,11 +217,8 @@ void GLFWOSPRayWindow::reshape(const vec2i &newWindowSize)
   windowSize = newWindowSize;
 
   // create new frame buffer
-  auto buffers = OSP_FB_COLOR | OSP_FB_DEPTH | OSP_FB_ACCUM | OSP_FB_ALBEDO
-      | OSP_FB_NORMAL | OSP_FB_ID_PRIMITIVE | OSP_FB_ID_OBJECT
-      | OSP_FB_ID_INSTANCE;
-  framebuffer =
-      cpp::FrameBuffer(windowSize.x, windowSize.y, OSP_FB_RGBA32F, buffers);
+  auto buffers = OSP_FB_COLOR;
+  framebuffer = cpp::FrameBuffer(windowSize.x, windowSize.y, OSP_FB_RGBA32F, OSP_FB_COLOR);
 
   // reset OpenGL viewport and orthographic projection
   glViewport(0, 0, windowSize.x, windowSize.y);
@@ -251,17 +229,6 @@ void GLFWOSPRayWindow::reshape(const vec2i &newWindowSize)
 
   // update camera
   arcballCamera->updateWindowSize(windowSize);
-
-  camera.setParam("aspect", windowSize.x / float(windowSize.y));
-  camera.commit();
-}
-
-void GLFWOSPRayWindow::updateCamera()
-{
-  camera.setParam("aspect", windowSize.x / float(windowSize.y));
-  camera.setParam("position", arcballCamera->eyePos());
-  camera.setParam("direction", arcballCamera->lookDir());
-  camera.setParam("up", arcballCamera->upDir());
 }
 
 void GLFWOSPRayWindow::motion(const vec2f &position)
@@ -291,8 +258,8 @@ void GLFWOSPRayWindow::motion(const vec2f &position)
     }
 
     if (cameraChanged) {
-      updateCamera();
-      addObjectToCommit(camera.handle());
+      windowState.rigChanged = true;
+      windowState.rigTransform = arcballCamera->transform();
     }
   }
 
@@ -333,9 +300,6 @@ void GLFWOSPRayWindow::display()
 
     framebuffer.unmap(fb);
 
-    commitOutstandingHandles();
-
-    startNewOSPRayFrame();
     firstFrame = false;
   }
 
@@ -372,7 +336,25 @@ void GLFWOSPRayWindow::display()
 
 void GLFWOSPRayWindow::startNewOSPRayFrame()
 {
-  currentFrame = framebuffer.renderFrame(renderer, camera, world);
+  bool fbNeedsClear = false;
+
+  auto handles = objectsToCommit.consume();
+  if (!handles.empty()) {
+    for (auto &h : handles)
+      ospCommit(h);
+    fbNeedsClear = true;
+  }
+
+  if (windowState.rigChanged) {
+    windowState.rigChanged = false;
+    cameraRig->update(windowState.rigTransform);
+    fbNeedsClear = true;
+  }
+
+  if (fbNeedsClear)
+    framebuffer.resetAccumulation();
+
+  currentFrame = framebuffer.renderFrame(renderer, cameraRig->camera, world);
 }
 
 void GLFWOSPRayWindow::waitOnOSPRayFrame()
@@ -454,16 +436,6 @@ void GLFWOSPRayWindow::buildUI()
   ImGui::End();
 }
 
-void GLFWOSPRayWindow::commitOutstandingHandles()
-{
-  auto handles = objectsToCommit.consume();
-  if (!handles.empty()) {
-    for (auto &h : handles)
-      ospCommit(h);
-    framebuffer.resetAccumulation();
-  }
-}
-
 void GLFWOSPRayWindow::refreshScene(bool resetCamera)
 {
   auto builder = testing::newBuilder(scene);
@@ -475,13 +447,10 @@ void GLFWOSPRayWindow::refreshScene(bool resetCamera)
   world.commit();
 
   if (resetCamera) {
-    // create the arcball camera model
     arcballCamera.reset(
-        new ArcballCamera(world.getBounds<box3f>(), windowSize));
-
-    // init camera
-    camera.setParam("position", vec3f(0.0f, 0.0f, 1.0f));
-    updateCamera();
-    addObjectToCommit(camera.handle());
+      new ArcballCamera(world.getBounds<box3f>(), windowSize));
+    
+    cameraRig.reset(new OffAxisProjection(mpiRank));
+    cameraRig->update(arcballCamera->transform());
   }
 }

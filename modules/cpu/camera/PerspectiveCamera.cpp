@@ -91,6 +91,12 @@ void PerspectiveCamera::commit()
       getSh()->dv_up = getSh()->dv_up * imgPlaneSize.y;
       getSh()->dir_00 =
           getSh()->dir_00 - 0.5f * getSh()->du_size - 0.5f * getSh()->dv_up;
+      
+      if (offAxisMode) {
+        getSh()->du_size = botRight - botLeft;
+        getSh()->dv_up = topLeft - botLeft;
+        getSh()->dir_00 = botLeft - getSh()->org;
+      }
 
       // prescale to focal plane
       if (getSh()->scaledAperture > 0.f) {

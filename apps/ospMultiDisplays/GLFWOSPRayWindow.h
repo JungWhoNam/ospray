@@ -4,6 +4,7 @@
 #pragma once
 
 #include "ArcballCamera.h"
+#include "OffAxisProjection.h"
 // glfw
 #include "GLFW/glfw3.h"
 // ospray
@@ -18,21 +19,17 @@ using namespace ospray;
 struct WindowState
 {
   bool quit;
-  // bool cameraChanged;
-  // bool fbSizeChanged;
-  // int spp;
-  // rkcommon::math::vec2i windowSize;
-  // rkcommon::math::vec3f eyePos;
-  // rkcommon::math::vec3f lookDir;
-  // rkcommon::math::vec3f upDir;
 
+  bool rigChanged;
+  AffineSpace3f rigTransform;
+  
   WindowState();
 };
 
 class GLFWOSPRayWindow
 {
  public:
-  GLFWOSPRayWindow(const vec2i &windowSize);
+  GLFWOSPRayWindow();
 
   ~GLFWOSPRayWindow();
 
@@ -43,8 +40,6 @@ class GLFWOSPRayWindow
  protected:
   void addObjectToCommit(OSPObject obj);
 
-  void updateCamera();
-  
   void reshape(const vec2i &newWindowSize);
   void motion(const vec2f &position);
   void display();
@@ -52,7 +47,6 @@ class GLFWOSPRayWindow
   void waitOnOSPRayFrame();
   void updateTitleBar();
   void buildUI();
-  void commitOutstandingHandles();
   void refreshScene(bool resetCamera = false);
 
   static GLFWOSPRayWindow *activeWindow;
@@ -63,10 +57,12 @@ class GLFWOSPRayWindow
   // Arcball camera instance
   std::unique_ptr<ArcballCamera> arcballCamera;
 
+  // Off-axis instance
+  std::unique_ptr<OffAxisProjection> cameraRig;
+
   // OSPRay objects managed by this class
   cpp::World world;
   cpp::Renderer renderer{"scivis"};
-  cpp::Camera camera{"perspective"};
   cpp::FrameBuffer framebuffer;
   cpp::Future currentFrame;
 

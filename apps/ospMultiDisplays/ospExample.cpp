@@ -29,8 +29,7 @@ int main(int argc, char **argv)
 
   initializeOSPRay(0, {}, false);
   {
-    auto glfwOSPRayWindow =
-        make_unique<GLFWOSPRayWindow>(vec2i(1024, 768));
+    auto glfwOSPRayWindow = make_unique<GLFWOSPRayWindow>();
     glfwOSPRayWindow->mainLoop();
     glfwOSPRayWindow.reset();
   }
