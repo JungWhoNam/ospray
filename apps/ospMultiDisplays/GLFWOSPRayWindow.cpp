@@ -332,6 +332,9 @@ void GLFWOSPRayWindow::display()
     ImGui_ImplGlfwGL3_Render();
   }
 
+  // wait for other ranks to reach this point before swapping the buffer
+  MPI_Barrier(MPI_COMM_WORLD);
+
   // swap buffers
   glfwSwapBuffers(glfwWindow);
 }
