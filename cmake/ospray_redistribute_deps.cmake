@@ -22,11 +22,12 @@ macro(ospray_install_namelink NAME)
   if (${VERSION_LIST_LENGTH} GREATER 2)
     if (APPLE)
       list(GET VERSION_LIST 1 VERSION_MAJOR)
+      set(SYMLINK ${BASE_LIB_NAME}.${VERSION_MAJOR}${LIB_SUFFIX})
     else()
       list(GET VERSION_LIST 2 VERSION_MAJOR)
+      set(SYMLINK ${BASE_LIB_NAME}${LIB_SUFFIX}.${VERSION_MAJOR})
     endif()
 
-    set(SYMLINK ${BASE_LIB_NAME}.${VERSION_MAJOR}${LIB_SUFFIX})
     execute_process(COMMAND "${CMAKE_COMMAND}" -E
         create_symlink ${REAL_PATH} ${CMAKE_CURRENT_BINARY_DIR}/${SYMLINK})
     install(PROGRAMS ${CMAKE_CURRENT_BINARY_DIR}/${SYMLINK} ${ARGN}
