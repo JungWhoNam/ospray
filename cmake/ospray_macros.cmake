@@ -349,6 +349,8 @@ macro(ospray_configure_compiler)
     # increase stack to 8MB (the default size of 1MB is too small for our apps)
     # note: linker options are independent of compiler (icc or MSVC)
     set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} /STACK:8388608")
+  elseif (UNIX AND NOT APPLE)
+    SET(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -Wl,--disable-new-dtags")
   endif()
 endmacro()
 
