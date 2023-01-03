@@ -44,3 +44,5 @@ endif()
 if (OSPRAY_ENABLE_APPS_TESTING)
     add_subdirectory(testing)
 endif()
+
+add_subdirectory(multiDisplays)
