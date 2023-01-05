@@ -1,0 +1,47 @@
+[
+    {
+        "hostName": "p00",
+
+        "topLeft": [0.92376, 0.57735, 1.0],
+        "botLeft": [0.92376, -0.57735, 1.0],
+        "botRight": [-0.92376, -0.57735, 1.0],
+        "mullionWidth:": 0.0,
+        "mullionHeight": 0.0,
+
+        "display": 1,
+        "screenX": 0,
+        "screenY": 0,
+        "screenWidth": 1024,
+        "screenHeight": 640
+    },
+    {
+        "hostName": "p01",
+
+        "topLeft": [0.92376, 0.57735, 1.0],
+        "botLeft": [0.92376, -0.57735, 1.0],
+        "botRight": [0.0, -0.57735, 1.0],
+        "mullionWidth:": 0.0,
+        "mullionHeight": 0.0,
+
+        "display": 0,
+        "screenX": 0,
+        "screenY": 0,
+        "screenWidth": 896,
+        "screenHeight": 1120
+    },
+    {
+        "hostName": "p02",
+
+        "topLeft": [0.0, 0.57735, 1.0],
+        "botLeft": [0.0, -0.57735, 1.0],
+        "botRight": [-0.92376, -0.57735, 1.0],
+        "mullionWidth:": 0.0,
+        "mullionHeight": 0.0,
+
+        "display": 0,
+        "screenX": 896,
+        "screenY": 0,
+        "screenWidth": 896,
+        "screenHeight": 1120
+    }
+]

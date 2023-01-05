@@ -28,6 +28,10 @@ target_link_libraries(mpi_multi_displays_common PUBLIC
 target_compile_definitions(mpi_multi_displays_common PUBLIC 
  -DOSPRAY_CPP_RKCOMMON_TYPES
 )
+# Add external libraries for this MPI multiple display utilities library
+add_subdirectory(external)
+target_link_libraries(mpi_multi_displays_common PUBLIC json)
+
 
 # build ospMPIMultiDisplays for demonstration
 add_executable(ospMPIMultiDisplays

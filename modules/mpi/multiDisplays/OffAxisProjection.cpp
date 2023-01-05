@@ -1,36 +1,51 @@
 #include "OffAxisProjection.h"
-
 #include "camera/PerspectiveCamera.h"
+#include "json.hpp"
 
-OffAxisProjection::OffAxisProjection(int screenID)
+OffAxisProjection::OffAxisProjection(int mpiRank)
 {
-  this->screenID = screenID;
-
   // currently only support perspective camera
   PerspectiveCamera *perspective = (PerspectiveCamera *)(camera.handle());
   perspective->offAxisMode = true;
-
-  // TODO read these information from a JSON file
-  // 1.84752 : 1.1547 = 1792 : 1120
-  // 1.84752 * 0.5 = 0.92376
-  // 1.1547 * 0.5 = 0.57735
-  if (screenID == 0) {
-    topLeftLocal = vec3f(0.92376f, 0.57735f, 1.0f);
-    botLeftLocal = vec3f(0.92376f, -0.57735f, 1.0f);
-    botRightLocal = vec3f(-0.92376f, -0.57735f, 1.0f);
-    camera.setParam("aspect", 1.84752f / 1.1547f);
-  } else if (screenID == 1) {
-    topLeftLocal = vec3f(0.92376f, 0.57735f, 1.0f);
-    botLeftLocal = vec3f(0.92376f, -0.57735f, 1.0f);
-    botRightLocal = vec3f(0, -0.57735f, 1.0f);
-    camera.setParam("aspect", 0.92376f / 1.1547f);
-  } else if (screenID == 2) {
-    topLeftLocal = vec3f(0.0f, 0.57735f, 1.0f);
-    botLeftLocal = vec3f(0.0f, -0.57735f, 1.0f);
-    botRightLocal = vec3f(-0.92376f, -0.57735f, 1.0f);
-    camera.setParam("aspect", 0.92376f / 1.1547f);
+  
+  // read JSON file
+  std::ifstream info("display_settings.json");
+  if (!info) {
+    throw std::runtime_error("Failed to load display_settings.json!");
+  }
+  nlohmann::ordered_json config;
+  try {
+    info >> config;
+  } catch (nlohmann::json::exception& e) {
+    throw std::runtime_error("Failed to parse display_settings.json!");
   }
 
+  // update camera variables
+  {
+    std::vector<float> vals = config[mpiRank]["topLeft"];
+    topLeftLocal.x = vals[0];
+    topLeftLocal.y = vals[1];
+    topLeftLocal.z = vals[2];
+    perspective->topLeft = topLeftLocal;
+  }
+  {
+    std::vector<float> vals = config[mpiRank]["botLeft"];
+    botLeftLocal.x = vals[0];
+    botLeftLocal.y = vals[1];
+    botLeftLocal.z = vals[2];
+    perspective->botLeft = botLeftLocal;
+  }
+  {
+    std::vector<float> vals = config[mpiRank]["botRight"];
+    botRightLocal.x = vals[0];
+    botRightLocal.y = vals[1];
+    botRightLocal.z = vals[2];
+    perspective->botRight = botRightLocal;
+  }
+  camera.setParam("aspect", 
+    rkcommon::math::length(botRightLocal - botLeftLocal) / 
+    rkcommon::math::length(topLeftLocal - botLeftLocal)
+  );
   camera.commit();
 }
 

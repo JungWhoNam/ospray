@@ -3,6 +3,7 @@
 
 #include "GLFWOSPRayWindow.h"
 #include "imgui_impl_glfw_gl3.h"
+#include "json.hpp"
 // ospray_testing
 #include "ospray_testing.h"
 #include "rkcommon/utility/random.h"
@@ -94,17 +95,21 @@ GLFWOSPRayWindow::GLFWOSPRayWindow()
     throw std::runtime_error("Failed to initialize GLFW!");
   }
 
-  // TODO get these information from a JSON file
-  int numTilesWidth = 2;
-  int numTilesHeight = 1;
-  int screenWidth = 1792;
-  int screenHeight = 1120;
-  int windowWidthRank0 = 1024;
-  int windowHeightRank0 = windowWidthRank0 * (screenHeight / (float) screenWidth);
+  // read JSON file
+  std::ifstream info("display_settings.json");
+  if (!info) {
+    throw std::runtime_error("Failed to load display_settings.json!");
+  }
+  nlohmann::ordered_json config;
+  try {
+    info >> config;
+  } catch (nlohmann::json::exception& e) {
+    throw std::runtime_error("Failed to parse display_settings.json!");
+  }
 
-  windowSize.x = mpiRank == 0 ? windowWidthRank0 : screenWidth / numTilesWidth;
-  windowSize.y = mpiRank == 0 ? windowHeightRank0 : screenHeight / numTilesHeight;
-  
+  windowSize.x = config[mpiRank]["screenWidth"];
+  windowSize.y = config[mpiRank]["screenHeight"];
+
   // create GLFW window 
   glfwWindowHint(GLFW_SRGB_CAPABLE, GLFW_TRUE);
   glfwWindowHint(GLFW_DECORATED, mpiRank == 0 ? GLFW_TRUE : GLFW_FALSE);
@@ -133,7 +138,7 @@ GLFWOSPRayWindow::GLFWOSPRayWindow()
 
   // further configure GLFW window based on rank
   if (mpiRank == 0) {
-    glfwSetWindowAspectRatio(glfwWindow, screenWidth, screenHeight);
+    glfwSetWindowAspectRatio(glfwWindow, windowSize.x, windowSize.y);
     // set GLFW callbacks (only apply to rank 0)
     glfwSetFramebufferSizeCallback(glfwWindow, [](GLFWwindow *, int newWidth, int newHeight) {
       activeWindow->reshape(vec2i{newWidth, newHeight});
@@ -158,8 +163,8 @@ GLFWOSPRayWindow::GLFWOSPRayWindow()
     });
   }
   else {
-    int x = (screenWidth / (float) numTilesWidth) * (mpiRank - 1);
-    int y = 0;
+    int x = config[mpiRank]["screenX"];
+    int y = config[mpiRank]["screenY"];
     glfwSetWindowPos(glfwWindow, x, y);
   }
 

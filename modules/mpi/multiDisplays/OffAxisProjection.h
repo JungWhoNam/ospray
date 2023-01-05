@@ -8,12 +8,10 @@ using namespace ospray;
 
 struct OffAxisProjection
 {
-  OffAxisProjection(int screenID);
+  OffAxisProjection(int mpiRank);
 
   void update(AffineSpace3f transform);
 
-  int screenID;
-  
   vec3f topLeftLocal;
   vec3f botLeftLocal;
   vec3f botRightLocal;
