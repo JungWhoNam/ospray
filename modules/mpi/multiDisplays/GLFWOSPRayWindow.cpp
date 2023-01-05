@@ -162,11 +162,22 @@ GLFWOSPRayWindow::GLFWOSPRayWindow()
       }
     });
   }
-  else {
-    int x = config[mpiRank]["screenX"];
-    int y = config[mpiRank]["screenY"];
-    glfwSetWindowPos(glfwWindow, x, y);
+  
+  // set the window position
+  int numOfMonitors;
+  GLFWmonitor** monitors = glfwGetMonitors(&numOfMonitors);
+
+  int displayIndex = config[mpiRank]["display"];
+  if (numOfMonitors <= displayIndex) {
+    throw std::runtime_error("The display index should be less than numOfMonitors: " + std::to_string(numOfMonitors));
   }
+
+  int xVirtual, yVirtual;
+  glfwGetMonitorPos(monitors[displayIndex], &xVirtual, &yVirtual);
+  
+  int x = (int) config[mpiRank]["screenX"] + xVirtual;
+  int y = (int) config[mpiRank]["screenY"] + yVirtual;
+  glfwSetWindowPos(glfwWindow, x, y);
 
   // OSPRay setup //
   refreshScene(true);
