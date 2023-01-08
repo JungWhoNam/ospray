@@ -2,6 +2,8 @@
 #include "camera/PerspectiveCamera.h"
 #include "json.hpp"
 
+using namespace rkcommon::math;
+
 OffAxisProjection::OffAxisProjection(int mpiRank)
 {
   // currently only support perspective camera
@@ -9,18 +11,18 @@ OffAxisProjection::OffAxisProjection(int mpiRank)
   perspective->offAxisMode = true;
   
   // read JSON file
-  std::ifstream info("display_settings.json");
+  std::ifstream info("config/display_settings.json");
   if (!info) {
-    throw std::runtime_error("Failed to load display_settings.json!");
+    throw std::runtime_error("Failed to load config/display_settings.json!");
   }
   nlohmann::ordered_json config;
   try {
     info >> config;
   } catch (nlohmann::json::exception& e) {
-    throw std::runtime_error("Failed to parse display_settings.json!");
+    throw std::runtime_error("Failed to parse config/display_settings.json!");
   }
 
-   // update three corners of the image plane
+  // update three corners of the image plane
   {
     std::vector<float> vals = config[mpiRank]["topLeft"];
     topLeftLocal.x = vals[0];

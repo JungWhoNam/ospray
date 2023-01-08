@@ -49,3 +49,10 @@ ospray_sign_target(ospMPIMultiDisplays)
 #   ospray_testing
 # )
 
+add_custom_command(TARGET ospMPIMultiDisplays POST_BUILD
+  COMMAND ${CMAKE_COMMAND} -E copy_directory 
+  ${CMAKE_CURRENT_SOURCE_DIR}/config $<TARGET_FILE_DIR:ospMPIMultiDisplays>/config)
+
+install(DIRECTORY 
+  ${CMAKE_CURRENT_SOURCE_DIR}/config
+  DESTINATION ${CMAKE_INSTALL_BINDIR})

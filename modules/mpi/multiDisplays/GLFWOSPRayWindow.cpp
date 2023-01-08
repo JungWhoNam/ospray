@@ -96,15 +96,15 @@ GLFWOSPRayWindow::GLFWOSPRayWindow()
   }
 
   // read JSON file
-  std::ifstream info("display_settings.json");
+  std::ifstream info("config/display_settings.json");
   if (!info) {
-    throw std::runtime_error("Failed to load display_settings.json!");
+    throw std::runtime_error("Failed to load config/display_settings.json!");
   }
   nlohmann::ordered_json config;
   try {
     info >> config;
   } catch (nlohmann::json::exception& e) {
-    throw std::runtime_error("Failed to parse display_settings.json!");
+    throw std::runtime_error("Failed to parse config/display_settings.json!");
   }
 
   windowSize.x = config[mpiRank]["screenWidth"];
