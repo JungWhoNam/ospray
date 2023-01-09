@@ -8,7 +8,10 @@ using namespace ospray;
 
 struct OffAxisProjection
 {
-  OffAxisProjection(int mpiRank);
+  OffAxisProjection(vec3f topLeftLocal, 
+                    vec3f botLeftLocal, 
+                    vec3f botRightLocal, 
+                    vec4f mullion = vec4f(0.f));
 
   void update(AffineSpace3f transform);
 

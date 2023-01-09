@@ -3,7 +3,6 @@
 
 #include "GLFWOSPRayWindow.h"
 #include "imgui_impl_glfw_gl3.h"
-#include "json.hpp"
 // ospray_testing
 #include "ospray_testing.h"
 #include "rkcommon/utility/random.h"
@@ -77,7 +76,7 @@ WindowState::WindowState()
     : quit(false), rigChanged(false), sceneChanged(false)
 {}
 
-GLFWOSPRayWindow::GLFWOSPRayWindow()
+GLFWOSPRayWindow::GLFWOSPRayWindow(nlohmann::ordered_json config)
 {
   MPI_Comm_rank(MPI_COMM_WORLD, &mpiRank);
   MPI_Comm_size(MPI_COMM_WORLD, &mpiWorldSize);
@@ -93,18 +92,6 @@ GLFWOSPRayWindow::GLFWOSPRayWindow()
   // initialize GLFW
   if (!glfwInit()) {
     throw std::runtime_error("Failed to initialize GLFW!");
-  }
-
-  // read JSON file
-  std::ifstream info("config/display_settings.json");
-  if (!info) {
-    throw std::runtime_error("Failed to load config/display_settings.json!");
-  }
-  nlohmann::ordered_json config;
-  try {
-    info >> config;
-  } catch (nlohmann::json::exception& e) {
-    throw std::runtime_error("Failed to parse config/display_settings.json!");
   }
 
   windowSize.x = config[mpiRank]["screenWidth"];
@@ -178,6 +165,22 @@ GLFWOSPRayWindow::GLFWOSPRayWindow()
   int x = (int) config[mpiRank]["screenX"] + xVirtual;
   int y = (int) config[mpiRank]["screenY"] + yVirtual;
   glfwSetWindowPos(glfwWindow, x, y);
+
+  // initialize cameraRig (off-axis mode)
+  {
+    std::vector<float> valsTL = config[mpiRank]["topLeft"];
+    vec3f topLeftLocal {valsTL[0], valsTL[1], valsTL[2]};
+
+    std::vector<float> valsBL = config[mpiRank]["botLeft"];
+    vec3f botLeftLocal {valsBL[0], valsBL[1], valsBL[2]};
+
+    std::vector<float> valsBR = config[mpiRank]["botRight"];
+    vec3f botRightLocal {valsBR[0], valsBR[1], valsBR[2]};
+
+    vec4f mullion {config[mpiRank]["mullionLeft"], config[mpiRank]["mullionRight"], config[mpiRank]["mullionTop"], config[mpiRank]["mullionBottom"]};
+
+    cameraRig.reset(new OffAxisProjection(topLeftLocal, botLeftLocal, botRightLocal, mullion));
+  }
 
   // OSPRay setup //
   refreshScene(true);
@@ -482,7 +485,6 @@ void GLFWOSPRayWindow::refreshScene(bool resetCamera)
     arcballCamera.reset(
       new ArcballCamera(world.getBounds<box3f>(), windowSize));
     
-    cameraRig.reset(new OffAxisProjection(mpiRank));
     cameraRig->update(arcballCamera->transform());
   }
 }

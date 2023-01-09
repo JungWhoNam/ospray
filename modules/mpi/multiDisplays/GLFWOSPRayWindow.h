@@ -5,6 +5,7 @@
 
 #include "ArcballCamera.h"
 #include "OffAxisProjection.h"
+#include "json.hpp"
 // glfw
 #include "GLFW/glfw3.h"
 // ospray
@@ -32,7 +33,7 @@ struct WindowState
 class GLFWOSPRayWindow
 {
  public:
-  GLFWOSPRayWindow();
+  GLFWOSPRayWindow(nlohmann::ordered_json config);
 
   ~GLFWOSPRayWindow();
 

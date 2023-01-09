@@ -1,67 +1,42 @@
 #include "OffAxisProjection.h"
 #include "camera/PerspectiveCamera.h"
-#include "json.hpp"
 
 using namespace rkcommon::math;
 
-OffAxisProjection::OffAxisProjection(int mpiRank)
+OffAxisProjection::OffAxisProjection(vec3f topLeftLocal,
+                                     vec3f botLeftLocal, 
+                                     vec3f botRightLocal, 
+                                     vec4f mullion)
 {
   // currently only support perspective camera
   PerspectiveCamera *perspective = (PerspectiveCamera *)(camera.handle());
   perspective->offAxisMode = true;
-  
-  // read JSON file
-  std::ifstream info("config/display_settings.json");
-  if (!info) {
-    throw std::runtime_error("Failed to load config/display_settings.json!");
-  }
-  nlohmann::ordered_json config;
-  try {
-    info >> config;
-  } catch (nlohmann::json::exception& e) {
-    throw std::runtime_error("Failed to parse config/display_settings.json!");
-  }
 
   // update three corners of the image plane
-  {
-    std::vector<float> vals = config[mpiRank]["topLeft"];
-    topLeftLocal.x = vals[0];
-    topLeftLocal.y = vals[1];
-    topLeftLocal.z = vals[2];
-    perspective->topLeft = topLeftLocal;
-  }
-  {
-    std::vector<float> vals = config[mpiRank]["botLeft"];
-    botLeftLocal.x = vals[0];
-    botLeftLocal.y = vals[1];
-    botLeftLocal.z = vals[2];
-    perspective->botLeft = botLeftLocal;
-  }
-  {
-    std::vector<float> vals = config[mpiRank]["botRight"];
-    botRightLocal.x = vals[0];
-    botRightLocal.y = vals[1];
-    botRightLocal.z = vals[2];
-    perspective->botRight = botRightLocal;
-  }
+  this->topLeftLocal = topLeftLocal;
+  this->botLeftLocal = botLeftLocal;
+  this->botRightLocal = botRightLocal;
+
+  perspective->topLeft = topLeftLocal;
+  perspective->botLeft = botLeftLocal;
+  perspective->botRight = botRightLocal;
+
   // use mullion values to update the three corners
-  {
-    vec3f tl = topLeftLocal, bl = botLeftLocal, br = botRightLocal;
+  vec3f tl = topLeftLocal, bl = botLeftLocal, br = botRightLocal;
 
-    float mullionLeft = config[mpiRank]["mullionLeft"];
-    botLeftLocal += normalize(br - bl) * mullionLeft;
-    topLeftLocal +=  normalize(br - bl) * mullionLeft;
+  float mullionLeft = mullion[0];
+  botLeftLocal += normalize(br - bl) * mullionLeft;
+  topLeftLocal +=  normalize(br - bl) * mullionLeft;
 
-    float mullionRight = config[mpiRank]["mullionRight"];
-    botRightLocal += normalize(bl - br) * mullionRight;
+  float mullionRight = mullion[1];
+  botRightLocal += normalize(bl - br) * mullionRight;
 
-    float mullionTop = config[mpiRank]["mullionTop"];
-    topLeftLocal += normalize(bl - tl) * mullionTop;
+  float mullionTop = mullion[2];
+  topLeftLocal += normalize(bl - tl) * mullionTop;
 
-    float mullionBottom = config[mpiRank]["mullionBottom"];
-    botLeftLocal += normalize(tl - bl) * mullionBottom;
-    botRightLocal += normalize(tl - bl) * mullionBottom;
-  }
+  float mullionBottom = mullion[3];
+  botLeftLocal += normalize(tl - bl) * mullionBottom;
+  botRightLocal += normalize(tl - bl) * mullionBottom;
 
   // update aspect ratio and fovy
   camera.setParam("aspect", length(botRightLocal - botLeftLocal) / length(topLeftLocal - botLeftLocal));
