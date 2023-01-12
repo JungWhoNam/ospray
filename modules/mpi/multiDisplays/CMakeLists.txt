@@ -13,7 +13,7 @@ add_library(mpi_multi_displays_common STATIC
   GLFWOSPRayWindow.cpp
   imgui_impl_glfw_gl3.cpp
   OffAxisProjection.cpp
-  StateTracker.cpp
+  tracking/TrackingManager.cpp
 )
 target_link_libraries(mpi_multi_displays_common PUBLIC
   rkcommon::rkcommon

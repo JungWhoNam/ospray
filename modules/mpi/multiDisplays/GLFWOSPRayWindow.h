@@ -6,7 +6,7 @@
 #include "ArcballCamera.h"
 #include "OffAxisProjection.h"
 #include "json.hpp"
-#include "StateTracker.h"
+#include "tracking/TrackingManager.h"
 // glfw
 #include "GLFW/glfw3.h"
 // ospray
@@ -102,5 +102,5 @@ class GLFWOSPRayWindow
   // The window state to be sent out over MPI to the other rendering processes
   WindowState windowState;
 
-  std::unique_ptr<StateTracker> trackingTracker;
+  std::unique_ptr<TrackingManager> trackingManager;
 };

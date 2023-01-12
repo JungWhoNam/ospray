@@ -125,12 +125,12 @@ GLFWOSPRayWindow::GLFWOSPRayWindow(nlohmann::ordered_json config)
 
   // further configure GLFW window based on rank
   if (mpiRank == 0) {
-    // initialize the tracking tracker
+    // initialize the tracking manager
     std::string ipAddress = config[mpiRank].contains("ipAddress") ? config[mpiRank]["ipAddress"] : "localhost";
     int portNumber = 8888;
     if (config[mpiRank].contains("portNumber"))
       portNumber = config[mpiRank]["portNumber"];
-    trackingTracker.reset(new StateTracker(ipAddress, portNumber));
+    trackingManager.reset(new TrackingManager(ipAddress, portNumber));
 
     glfwSetWindowAspectRatio(glfwWindow, windowSize.x, windowSize.y);
     // set GLFW callbacks (only apply to rank 0)
@@ -153,10 +153,10 @@ GLFWOSPRayWindow::GLFWOSPRayWindow(nlohmann::ordered_json config)
           g_quitNextFrame = true;
           break;
         case GLFW_KEY_C:
-          activeWindow->trackingTracker->start();
+          activeWindow->trackingManager->start();
           break;
         case GLFW_KEY_D:
-          activeWindow->trackingTracker->close();
+          activeWindow->trackingManager->close();
           break;
         }
       }
@@ -243,9 +243,9 @@ void GLFWOSPRayWindow::mainLoop()
     glfwPollEvents();
 
     if (mpiRank == 0) {
-      windowState.camChanged = trackingTracker->isUpdated();
-      if (trackingTracker->isUpdated()) {
-        nlohmann::ordered_json j = trackingTracker->pollState();
+      windowState.camChanged = trackingManager->isUpdated();
+      if (trackingManager->isUpdated()) {
+        nlohmann::ordered_json j = trackingManager->pollState();
         if (j == nullptr) {
           windowState.camLocalPos = vec3f(0.);
         }
@@ -260,7 +260,7 @@ void GLFWOSPRayWindow::mainLoop()
     MPI_Barrier(MPI_COMM_WORLD);
   }
   if (mpiRank == 0)
-    trackingTracker->close();
+    trackingManager->close();
 }
 
 void GLFWOSPRayWindow::reshape(const vec2i &newWindowSize)

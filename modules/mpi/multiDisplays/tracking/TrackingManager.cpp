@@ -1,8 +1,8 @@
-#include "StateTracker.h"
+#include "TrackingManager.h"
 
 #include <iostream>
 
-StateTracker::StateTracker(std::string ipAddress, uint portNumber) {
+TrackingManager::TrackingManager(std::string ipAddress, uint portNumber) {
     tcpSocket = nullptr;
     this->ipAddress = ipAddress;
     this->portNumber = portNumber;
@@ -10,11 +10,11 @@ StateTracker::StateTracker(std::string ipAddress, uint portNumber) {
     updated = false;
 }
 
-StateTracker::~StateTracker() {
+TrackingManager::~TrackingManager() {
     this->close();
 }
 
-void StateTracker::start() {
+void TrackingManager::start() {
     if (tcpSocket != nullptr) {
         std::cout << "Connection has already been set." << std::endl;
         return;
@@ -58,22 +58,22 @@ void StateTracker::start() {
     });
 }
 
-void StateTracker::close() {
+void TrackingManager::close() {
     if (tcpSocket == nullptr)
         return;
 
     tcpSocket->Close();
 }
 
-bool StateTracker::isRunning() {
+bool TrackingManager::isRunning() {
     return tcpSocket != nullptr && !tcpSocket->isClosed;
 }
 
-bool StateTracker::isUpdated() {
+bool TrackingManager::isUpdated() {
     return updated;
 }
 
-nlohmann::ordered_json StateTracker::pollState() {
+nlohmann::ordered_json TrackingManager::pollState() {
     std::lock_guard<std::mutex> guard(mtx);
     
     updated = false;

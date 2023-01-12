@@ -7,11 +7,11 @@
 #include <mutex>
 
 
-class StateTracker
+class TrackingManager
 {
 public:
-    StateTracker(std::string ipAddress, uint portNumber);
-    ~StateTracker();
+    TrackingManager(std::string ipAddress, uint portNumber);
+    ~TrackingManager();
 
     void start();
     void close();
