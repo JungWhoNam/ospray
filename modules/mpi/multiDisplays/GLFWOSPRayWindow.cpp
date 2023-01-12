@@ -73,7 +73,7 @@ void error_callback(int error, const char *desc)
 GLFWOSPRayWindow *GLFWOSPRayWindow::activeWindow = nullptr;
 
 WindowState::WindowState() 
-    : quit(false), rigChanged(false), sceneChanged(false)
+    : quit(false), rigChanged(false), sceneChanged(false), camChanged(false)
 {}
 
 GLFWOSPRayWindow::GLFWOSPRayWindow(nlohmann::ordered_json config)
@@ -125,6 +125,13 @@ GLFWOSPRayWindow::GLFWOSPRayWindow(nlohmann::ordered_json config)
 
   // further configure GLFW window based on rank
   if (mpiRank == 0) {
+    // initialize the tracking tracker
+    std::string ipAddress = config[mpiRank].contains("ipAddress") ? config[mpiRank]["ipAddress"] : "localhost";
+    int portNumber = 8888;
+    if (config[mpiRank].contains("portNumber"))
+      portNumber = config[mpiRank]["portNumber"];
+    trackingTracker.reset(new StateTracker(ipAddress, portNumber));
+
     glfwSetWindowAspectRatio(glfwWindow, windowSize.x, windowSize.y);
     // set GLFW callbacks (only apply to rank 0)
     glfwSetFramebufferSizeCallback(glfwWindow, [](GLFWwindow *, int newWidth, int newHeight) {
@@ -144,6 +151,12 @@ GLFWOSPRayWindow::GLFWOSPRayWindow(nlohmann::ordered_json config)
           break;
         case GLFW_KEY_Q:
           g_quitNextFrame = true;
+          break;
+        case GLFW_KEY_C:
+          activeWindow->trackingTracker->start();
+          break;
+        case GLFW_KEY_D:
+          activeWindow->trackingTracker->close();
           break;
         }
       }
@@ -229,11 +242,25 @@ void GLFWOSPRayWindow::mainLoop()
     // poll and process events
     glfwPollEvents();
 
-    if (mpiRank == 0) {  
+    if (mpiRank == 0) {
+      windowState.camChanged = trackingTracker->isUpdated();
+      if (trackingTracker->isUpdated()) {
+        nlohmann::ordered_json j = trackingTracker->pollState();
+        if (j == nullptr) {
+          windowState.camLocalPos = vec3f(0.);
+        }
+        else {
+          std::vector<float> vals = j[26]["pos"];
+          windowState.camLocalPos = vec3f(vals[0], vals[1], vals[2]);
+        }
+      }
+
       windowState.quit = glfwWindowShouldClose(glfwWindow) || g_quitNextFrame;
     }
     MPI_Barrier(MPI_COMM_WORLD);
   }
+  if (mpiRank == 0)
+    trackingTracker->close();
 }
 
 void GLFWOSPRayWindow::reshape(const vec2i &newWindowSize)
@@ -382,6 +409,13 @@ void GLFWOSPRayWindow::startNewOSPRayFrame()
   if (windowState.rigChanged) {
     windowState.rigChanged = false;
     cameraRig->update(windowState.rigTransform);
+    fbNeedsClear = true;
+  }
+
+  if (windowState.camChanged) {
+    windowState.camChanged = false;
+    cameraRig->camera.setParam("position", windowState.camLocalPos);
+    cameraRig->camera.commit();
     fbNeedsClear = true;
   }
 

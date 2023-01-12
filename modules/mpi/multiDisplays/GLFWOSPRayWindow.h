@@ -6,6 +6,7 @@
 #include "ArcballCamera.h"
 #include "OffAxisProjection.h"
 #include "json.hpp"
+#include "StateTracker.h"
 // glfw
 #include "GLFW/glfw3.h"
 // ospray
@@ -26,6 +27,9 @@ struct WindowState
 
   bool sceneChanged;
   std::string scene;
+
+  bool camChanged;
+  vec3f camLocalPos;
 
   WindowState();
 };
@@ -97,4 +101,6 @@ class GLFWOSPRayWindow
 
   // The window state to be sent out over MPI to the other rendering processes
   WindowState windowState;
+
+  std::unique_ptr<StateTracker> trackingTracker;
 };

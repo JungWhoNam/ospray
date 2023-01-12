@@ -13,6 +13,7 @@ add_library(mpi_multi_displays_common STATIC
   GLFWOSPRayWindow.cpp
   imgui_impl_glfw_gl3.cpp
   OffAxisProjection.cpp
+  StateTracker.cpp
 )
 target_link_libraries(mpi_multi_displays_common PUBLIC
   rkcommon::rkcommon
@@ -30,7 +31,7 @@ target_compile_definitions(mpi_multi_displays_common PUBLIC
 )
 # Add external libraries for this MPI multiple display utilities library
 add_subdirectory(external)
-target_link_libraries(mpi_multi_displays_common PUBLIC json)
+target_link_libraries(mpi_multi_displays_common PUBLIC json network)
 
 
 # build ospMPIMultiDisplays for demonstration
