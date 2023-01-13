@@ -245,14 +245,9 @@ void GLFWOSPRayWindow::mainLoop()
     if (mpiRank == 0) {
       windowState.camChanged = trackingManager->isUpdated();
       if (trackingManager->isUpdated()) {
-        nlohmann::ordered_json j = trackingManager->pollState();
-        if (j == nullptr) {
-          windowState.camLocalPos = vec3f(0.);
-        }
-        else {
-          std::vector<float> vals = j[26]["pos"];
-          windowState.camLocalPos = vec3f(vals[0], vals[1], vals[2]);
-        }
+        TrackingState state = trackingManager->pollState();
+        if (state.confidences[K4ABT_JOINT_HEAD] >= K4ABT_JOINT_CONFIDENCE_LOW)
+          windowState.camLocalPos = state.positions[K4ABT_JOINT_HEAD];
       }
 
       windowState.quit = glfwWindowShouldClose(glfwWindow) || g_quitNextFrame;

@@ -6,7 +6,6 @@ TrackingManager::TrackingManager(std::string ipAddress, uint portNumber) {
     tcpSocket = nullptr;
     this->ipAddress = ipAddress;
     this->portNumber = portNumber;
-    state = nullptr;
     updated = false;
 }
 
@@ -30,12 +29,7 @@ void TrackingManager::start() {
         std::lock_guard<std::mutex> guard(mtx);
 
         // std::cout << "Message from the Server: " << message << std::endl << std::flush;
-        try {
-            state = nlohmann::ordered_json::parse(message);
-        } catch (nlohmann::json::exception& e) {
-            std::cout << "Parse exception: " << e.what() << std::endl;
-            state = nullptr;
-        }
+        updateState(message);
         updated = true;
     };
     
@@ -44,7 +38,7 @@ void TrackingManager::start() {
         std::cout << "Connection closed: " << errorCode << std::endl;
         delete tcpSocket;
         tcpSocket = nullptr;
-        state = nullptr;
+        updateState("{}");
         updated = true;
     };
 
@@ -73,9 +67,37 @@ bool TrackingManager::isUpdated() {
     return updated;
 }
 
-nlohmann::ordered_json TrackingManager::pollState() {
+TrackingState TrackingManager::pollState() {
     std::lock_guard<std::mutex> guard(mtx);
     
     updated = false;
     return state;
+}
+
+void TrackingManager::updateState(std::string message) {
+    nlohmann::ordered_json j; 
+    try {
+        j = nlohmann::ordered_json::parse(message);
+    } catch (nlohmann::json::exception& e) {
+        std::cout << "Parse exception: " << e.what() << std::endl;
+        j = nullptr;
+    }
+    
+    for (int i = 0; i < K4ABT_JOINT_COUNT; i++) {
+        rkcommon::math::vec3f pos(0.);
+        int conf = K4ABT_JOINT_CONFIDENCE_NONE;
+
+        if (j != nullptr && j.size() ==  K4ABT_JOINT_COUNT && j[i].contains("pos")) {
+            std::vector<float> vals = j[i]["pos"];
+            pos.x = vals[0];
+            pos.y = vals[1];
+            pos.z = vals[2];
+        }
+        if (j != nullptr && j.size() ==  K4ABT_JOINT_COUNT && j[i].contains("conf")) {
+            conf = j[i]["conf"]; 
+        }
+        
+        state.positions[i] = pos;
+        state.confidences[i] = conf;
+    }
 }
