@@ -1,0 +1,8 @@
+{
+    "ipAddress": "129.114.10.237",
+    "portNumber": 8888,
+    
+    "multiplyBy": [0.001, -0.001, -0.001],
+
+    "positionOffset": [0.0, -0.1, 1.19]
+}

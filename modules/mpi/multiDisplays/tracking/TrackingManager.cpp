@@ -2,11 +2,40 @@
 
 #include <iostream>
 
-TrackingManager::TrackingManager(std::string ipAddress, uint portNumber) {
+TrackingManager::TrackingManager(nlohmann::ordered_json config) {
     tcpSocket = nullptr;
-    this->ipAddress = ipAddress;
-    this->portNumber = portNumber;
     updated = false;
+
+     // initialize the tracking manager
+    ipAddress = "localhost";
+    if (config.contains("ipAddress"))
+        ipAddress = config["ipAddress"];
+    
+    portNumber = 8888;
+    if (config.contains("portNumber"))
+      portNumber = config["portNumber"];
+
+    positionOffset[0] = 0.0f;
+    positionOffset[1] = 0.0f;
+    positionOffset[2] = 0.0f;
+    if (config.contains("positionOffset")) {
+        std::vector<float> vals = config["positionOffset"];
+        positionOffset[0] = vals[0];
+        positionOffset[1] = vals[1];
+        positionOffset[2] = vals[2];
+    }
+
+    // Kinect - right-hand, y-down, z-forward, in milli-meters
+    // OSPRay - right-hand, y-up, z-forward, in meters
+    multiplyBy[0] = -0.001f;
+    multiplyBy[1] = -0.001f;
+    multiplyBy[2] = 0.001f;
+    if (config.contains("multiplyBy")) {
+        std::vector<float> vals = config["multiplyBy"];
+        multiplyBy[0] = vals[0];
+        multiplyBy[1] = vals[1];
+        multiplyBy[2] = vals[2];
+    }
 }
 
 TrackingManager::~TrackingManager() {
@@ -89,9 +118,9 @@ void TrackingManager::updateState(std::string message) {
 
         if (j != nullptr && j.size() ==  K4ABT_JOINT_COUNT && j[i].contains("pos")) {
             std::vector<float> vals = j[i]["pos"];
-            pos.x = vals[0];
-            pos.y = vals[1];
-            pos.z = vals[2];
+            pos.x = vals[0] * multiplyBy[0] + positionOffset[0];
+            pos.y = vals[1] * multiplyBy[1] + positionOffset[1];
+            pos.z = vals[2] * multiplyBy[2] + positionOffset[2];
         }
         if (j != nullptr && j.size() ==  K4ABT_JOINT_COUNT && j[i].contains("conf")) {
             conf = j[i]["conf"]; 

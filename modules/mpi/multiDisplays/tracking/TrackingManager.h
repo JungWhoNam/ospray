@@ -24,7 +24,7 @@ struct TrackingState {
 class TrackingManager
 {
 public:
-    TrackingManager(std::string ipAddress, uint portNumber);
+    TrackingManager(nlohmann::ordered_json config);
     ~TrackingManager();
 
     void start();
@@ -33,6 +33,9 @@ public:
     bool isUpdated();
 
     TrackingState pollState();
+
+    float multiplyBy[3];
+    float positionOffset[3];
 
 private:
     void updateState(std::string message);

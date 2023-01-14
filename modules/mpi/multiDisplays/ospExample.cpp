@@ -9,21 +9,34 @@
 using namespace ospray;
 using rkcommon::make_unique;
 
-int main(int argc, char **argv)
+nlohmann::ordered_json readJSON(std::string filePath)
 {
-  // read JSON file
-  nlohmann::ordered_json config;
+  nlohmann::ordered_json config = nullptr;
+  
   try {
-    std::ifstream configFile(argc > 1 ? argv[1] : "config/display_settings.json");
+    std::ifstream configFile(filePath);
     if (!configFile) {
       std::cerr << "The config file does not exist." << std::endl;
-      return 1;
+      return nullptr;
     }
     configFile >> config;
-  } catch (nlohmann::json::exception& e) {
+  } catch (nlohmann::json::exception &e) {
     std::cerr << "Failed to parse the config file: " << e.what() << std::endl;
-    return 1;
+    return nullptr;
   }
+
+  return config;
+}
+
+int main(int argc, char **argv)
+{
+  // read config JSON files
+  nlohmann::ordered_json configDisplay = readJSON(argc > 1 ? argv[1] : "config/display_settings.json");
+  if (configDisplay == nullptr)
+    return 1;
+  nlohmann::ordered_json configTracking = readJSON(argc > 2 ? argv[2] : "config/tracking_settings.json");
+  if (configTracking == nullptr)
+    return 1;
 
   int mpiThreadCapability = 0;
   MPI_Init_thread(&argc, &argv, MPI_THREAD_MULTIPLE, &mpiThreadCapability);
@@ -44,7 +57,7 @@ int main(int argc, char **argv)
 
   initializeOSPRay(0, {}, false);
   {
-    auto glfwOSPRayWindow = make_unique<GLFWOSPRayWindow>(config);
+    auto glfwOSPRayWindow = make_unique<GLFWOSPRayWindow>(configDisplay, configTracking);
     glfwOSPRayWindow->mainLoop();
     glfwOSPRayWindow.reset();
   }

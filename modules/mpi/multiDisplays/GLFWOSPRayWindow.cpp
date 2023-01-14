@@ -76,7 +76,7 @@ WindowState::WindowState()
     : quit(false), rigChanged(false), sceneChanged(false), camChanged(false)
 {}
 
-GLFWOSPRayWindow::GLFWOSPRayWindow(nlohmann::ordered_json config)
+GLFWOSPRayWindow::GLFWOSPRayWindow(nlohmann::ordered_json config, nlohmann::ordered_json configTracking)
 {
   MPI_Comm_rank(MPI_COMM_WORLD, &mpiRank);
   MPI_Comm_size(MPI_COMM_WORLD, &mpiWorldSize);
@@ -126,11 +126,7 @@ GLFWOSPRayWindow::GLFWOSPRayWindow(nlohmann::ordered_json config)
   // further configure GLFW window based on rank
   if (mpiRank == 0) {
     // initialize the tracking manager
-    std::string ipAddress = config[mpiRank].contains("ipAddress") ? config[mpiRank]["ipAddress"] : "localhost";
-    int portNumber = 8888;
-    if (config[mpiRank].contains("portNumber"))
-      portNumber = config[mpiRank]["portNumber"];
-    trackingManager.reset(new TrackingManager(ipAddress, portNumber));
+    trackingManager.reset(new TrackingManager(configTracking));
 
     glfwSetWindowAspectRatio(glfwWindow, windowSize.x, windowSize.y);
     // set GLFW callbacks (only apply to rank 0)
@@ -470,27 +466,46 @@ void GLFWOSPRayWindow::buildUI()
   }
   ImGui::Separator();
 
-  // assume rendererType == OSPRayRendererType::SCIVIS
-  static bool shadowsEnabled = false;
-  if (ImGui::Checkbox("shadows", &shadowsEnabled)) {
-    renderer.setParam("shadows", shadowsEnabled);
-    addObjectToCommit(renderer.handle());
+  ImGui::SliderFloat3("scale", trackingManager->multiplyBy, -3.0f, 3.0f);
+  ImGui::SliderFloat3("pos offset", trackingManager->positionOffset, -3.0f, 3.0f);
+  ImGui::Separator();
+
+  ImGui::Text("Last Tracking Results:");
+  {
+    std::string str = "head.x: " + std::to_string(windowState.camLocalPos.x);
+    ImGui::Text(str.c_str());
   }
-  static bool visibleLights = false;
-  if (ImGui::Checkbox("visibleLights", &visibleLights)) {
-    renderer.setParam("visibleLights", visibleLights);
-    addObjectToCommit(renderer.handle());
+  {
+    std::string str = "head.y: " + std::to_string(windowState.camLocalPos.y);
+    ImGui::Text(str.c_str());
   }
-  static int aoSamples = 0;
-  if (ImGui::SliderInt("aoSamples", &aoSamples, 0, 64)) {
-    renderer.setParam("aoSamples", aoSamples);
-    addObjectToCommit(renderer.handle());
+  {
+    std::string str = "head.z: " + std::to_string(windowState.camLocalPos.z);
+    ImGui::Text(str.c_str());
   }
-  static float samplingRate = 1.f;
-  if (ImGui::SliderFloat("volumeSamplingRate", &samplingRate, 0.001f, 2.f)) {
-    renderer.setParam("volumeSamplingRate", samplingRate);
-    addObjectToCommit(renderer.handle());
-  }
+  ImGui::Separator();
+
+  // // assume rendererType == OSPRayRendererType::SCIVIS
+  // static bool shadowsEnabled = false;
+  // if (ImGui::Checkbox("shadows", &shadowsEnabled)) {
+  //   renderer.setParam("shadows", shadowsEnabled);
+  //   addObjectToCommit(renderer.handle());
+  // }
+  // static bool visibleLights = false;
+  // if (ImGui::Checkbox("visibleLights", &visibleLights)) {
+  //   renderer.setParam("visibleLights", visibleLights);
+  //   addObjectToCommit(renderer.handle());
+  // }
+  // static int aoSamples = 0;
+  // if (ImGui::SliderInt("aoSamples", &aoSamples, 0, 64)) {
+  //   renderer.setParam("aoSamples", aoSamples);
+  //   addObjectToCommit(renderer.handle());
+  // }
+  // static float samplingRate = 1.f;
+  // if (ImGui::SliderFloat("volumeSamplingRate", &samplingRate, 0.001f, 2.f)) {
+  //   renderer.setParam("volumeSamplingRate", samplingRate);
+  //   addObjectToCommit(renderer.handle());
+  // }
 
   if (uiCallback) {
     ImGui::Separator();

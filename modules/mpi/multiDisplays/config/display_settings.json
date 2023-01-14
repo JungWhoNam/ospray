@@ -14,10 +14,7 @@
 	"screenX": 0,
 	"screenY": 0,
 	"screenWidth": 1024,
-	"screenHeight": 640,
-
-	"ipAddress": "localHost",
-	"portNumber": 8888
+	"screenHeight": 640
 },
 {
 	"hostName": "localhost",
