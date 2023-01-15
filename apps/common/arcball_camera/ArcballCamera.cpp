@@ -50,6 +50,12 @@ void ArcballCamera::pan(const rkcommon::math::vec2f &delta)
   updateCamera();
 }
 
+void ArcballCamera::move(const rkcommon::math::vec3f &dir) {
+  translation =
+      rkcommon::math::AffineSpace3f::translate(-dir) * translation;
+  updateCamera();
+}
+
 rkcommon::math::vec3f ArcballCamera::eyePos() const
 {
   return xfmPoint(invCamera, rkcommon::math::vec3f(0, 0, 1));

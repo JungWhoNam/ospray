@@ -28,9 +28,6 @@ struct WindowState
   bool sceneChanged;
   std::string scene;
 
-  bool camChanged;
-  vec3f camLocalPos;
-
   WindowState();
 };
 

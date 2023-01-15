@@ -7,17 +7,12 @@ TrackingManager::TrackingManager(nlohmann::ordered_json config) {
     updated = false;
 
      // initialize the tracking manager
-    ipAddress = "localhost";
     if (config.contains("ipAddress"))
         ipAddress = config["ipAddress"];
     
-    portNumber = 8888;
     if (config.contains("portNumber"))
       portNumber = config["portNumber"];
 
-    positionOffset[0] = 0.0f;
-    positionOffset[1] = 0.0f;
-    positionOffset[2] = 0.0f;
     if (config.contains("positionOffset")) {
         std::vector<float> vals = config["positionOffset"];
         positionOffset[0] = vals[0];
@@ -25,16 +20,15 @@ TrackingManager::TrackingManager(nlohmann::ordered_json config) {
         positionOffset[2] = vals[2];
     }
 
-    // Kinect - right-hand, y-down, z-forward, in milli-meters
-    // OSPRay - right-hand, y-up, z-forward, in meters
-    multiplyBy[0] = -0.001f;
-    multiplyBy[1] = -0.001f;
-    multiplyBy[2] = 0.001f;
     if (config.contains("multiplyBy")) {
         std::vector<float> vals = config["multiplyBy"];
         multiplyBy[0] = vals[0];
         multiplyBy[1] = vals[1];
         multiplyBy[2] = vals[2];
+    }
+
+    if (config.contains("leaningAngleThreshold")) {
+        leaningAngleThreshold = config["leaningAngleThreshold"];
     }
 }
 
@@ -104,6 +98,16 @@ TrackingState TrackingManager::pollState() {
 }
 
 void TrackingManager::updateState(std::string message) {
+    // set the default state
+    for (int i = 0; i < K4ABT_JOINT_COUNT; i++) {
+        state.positions[i] = vec3f(0.f);
+        state.confidences[i] = K4ABT_JOINT_CONFIDENCE_NONE;
+    }
+    state.mode = INTERACTION_NONE;
+    state.leaningAngle = 0.0f;
+    state.leaningDir = vec3f(0.0f);
+
+    // parse the message (which is supposed to be in a JSON format)
     nlohmann::ordered_json j; 
     try {
         j = nlohmann::ordered_json::parse(message);
@@ -111,22 +115,65 @@ void TrackingManager::updateState(std::string message) {
         std::cout << "Parse exception: " << e.what() << std::endl;
         j = nullptr;
     }
-    
-    for (int i = 0; i < K4ABT_JOINT_COUNT; i++) {
-        rkcommon::math::vec3f pos(0.);
-        int conf = K4ABT_JOINT_CONFIDENCE_NONE;
 
-        if (j != nullptr && j.size() ==  K4ABT_JOINT_COUNT && j[i].contains("pos")) {
-            std::vector<float> vals = j[i]["pos"];
-            pos.x = vals[0] * multiplyBy[0] + positionOffset[0];
-            pos.y = vals[1] * multiplyBy[1] + positionOffset[1];
-            pos.z = vals[2] * multiplyBy[2] + positionOffset[2];
-        }
-        if (j != nullptr && j.size() ==  K4ABT_JOINT_COUNT && j[i].contains("conf")) {
-            conf = j[i]["conf"]; 
-        }
-        
-        state.positions[i] = pos;
-        state.confidences[i] = conf;
+    // check if the tracking data is reliable.
+    if (j == nullptr || j.size() != K4ABT_JOINT_COUNT) {
+        return;
     }
+
+    // update positions and confidence levels
+    for (int i = 0; i < K4ABT_JOINT_COUNT; i++) {
+        if (j[i].contains("pos")) {
+            std::vector<float> vals = j[i]["pos"];
+            state.positions[i].x = vals[0] * multiplyBy[0] + positionOffset[0];
+            state.positions[i].y = vals[1] * multiplyBy[1] + positionOffset[1];
+            state.positions[i].z = vals[2] * multiplyBy[2] + positionOffset[2];
+        }
+        if (j[i].contains("conf")) {
+            state.confidences[i] = j[i]["conf"]; 
+        }
+    }
+
+    // check if the tracking data is reliable for further detections.
+    if (state.confidences[K4ABT_JOINT_SPINE_NAVEL] < K4ABT_JOINT_CONFIDENCE_LOW ||
+        state.confidences[K4ABT_JOINT_HAND_LEFT] < K4ABT_JOINT_CONFIDENCE_LOW ||
+        state.confidences[K4ABT_JOINT_HAND_RIGHT] < K4ABT_JOINT_CONFIDENCE_LOW ||
+        state.confidences[K4ABT_JOINT_NECK] < K4ABT_JOINT_CONFIDENCE_LOW) {
+        return;
+    }
+
+    // compute additional states (angle and direction)
+    vec3f spine = state.positions[K4ABT_JOINT_NECK] - state.positions[K4ABT_JOINT_SPINE_NAVEL];
+    vec3f normal (0.0f, 1.0f, 0.0f);
+    state.leaningAngle = acos(dot(spine, normal) / (length(spine) * length(normal))) / M_PI * 180.f;
+    state.leaningDir = spine - dot(spine, normal) / length(normal) * normal;
+    state.leaningDir.x *= leaningDirScaleFactor[0];
+    state.leaningDir.y *= leaningDirScaleFactor[1];
+    state.leaningDir.z *= leaningDirScaleFactor[2];
+
+    // compute additional states (mode)
+    bool leftHandUp = state.positions[K4ABT_JOINT_SPINE_NAVEL].y < state.positions[K4ABT_JOINT_HAND_LEFT].y;
+    bool rightHandUp = state.positions[K4ABT_JOINT_SPINE_NAVEL].y < state.positions[K4ABT_JOINT_HAND_RIGHT].y;
+    state.mode = (leftHandUp && rightHandUp && state.leaningAngle > leaningAngleThreshold) ? INTERACTION_FLYING : INTERACTION_IDLE;
+}
+
+// show "important" tracking information in a readable format
+std::string TrackingManager::getResultsInReadableForm() {
+    std::string result;
+
+    result += "headPos.x: " + std::to_string(state.positions[K4ABT_JOINT_HEAD].x) + "\n";
+    result += "headPos.y: " + std::to_string(state.positions[K4ABT_JOINT_HEAD].y) + "\n";
+    result += "headPos.z: " + std::to_string(state.positions[K4ABT_JOINT_HEAD].z) + "\n";
+
+    if (state.mode == INTERACTION_NONE) result += "mode: NONE\n";
+    else if (state.mode == INTERACTION_IDLE) result += "mode: IDLE\n";
+    else if (state.mode == INTERACTION_FLYING) result += "mode: FLYING\n";
+
+    result += "leaningAngle: " + std::to_string(state.leaningAngle) + " °\n";
+
+    result += "leaningDir.x: " + std::to_string(state.leaningDir.x) + "\n";
+    result += "leaningDir.y: " + std::to_string(state.leaningDir.y) + " (proj. to x-z plane)\n";
+    result += "leaningDir.z: " + std::to_string(state.leaningDir.z);
+    
+    return result;
 }

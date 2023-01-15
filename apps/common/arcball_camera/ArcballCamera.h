@@ -17,6 +17,8 @@ class ArcballCamera
   void zoom(float amount);
   void pan(const rkcommon::math::vec2f &delta);
 
+  void move(const rkcommon::math::vec3f &dir);
+
   rkcommon::math::vec3f eyePos() const;
   rkcommon::math::vec3f center() const;
   rkcommon::math::vec3f lookDir() const;

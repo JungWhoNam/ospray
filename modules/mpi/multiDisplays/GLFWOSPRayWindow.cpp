@@ -73,7 +73,7 @@ void error_callback(int error, const char *desc)
 GLFWOSPRayWindow *GLFWOSPRayWindow::activeWindow = nullptr;
 
 WindowState::WindowState() 
-    : quit(false), rigChanged(false), sceneChanged(false), camChanged(false)
+    : quit(false), rigChanged(false), sceneChanged(false)
 {}
 
 GLFWOSPRayWindow::GLFWOSPRayWindow(nlohmann::ordered_json config, nlohmann::ordered_json configTracking)
@@ -239,11 +239,14 @@ void GLFWOSPRayWindow::mainLoop()
     glfwPollEvents();
 
     if (mpiRank == 0) {
-      windowState.camChanged = trackingManager->isUpdated();
       if (trackingManager->isUpdated()) {
         TrackingState state = trackingManager->pollState();
-        if (state.confidences[K4ABT_JOINT_HEAD] >= K4ABT_JOINT_CONFIDENCE_LOW)
-          windowState.camLocalPos = state.positions[K4ABT_JOINT_HEAD];
+
+        if (state.mode == INTERACTION_FLYING) {
+          arcballCamera->move(state.leaningDir);
+          windowState.rigChanged = true;
+          windowState.rigTransform = arcballCamera->transform();
+        }
       }
 
       windowState.quit = glfwWindowShouldClose(glfwWindow) || g_quitNextFrame;
@@ -403,13 +406,6 @@ void GLFWOSPRayWindow::startNewOSPRayFrame()
     fbNeedsClear = true;
   }
 
-  if (windowState.camChanged) {
-    windowState.camChanged = false;
-    cameraRig->camera.setParam("position", windowState.camLocalPos);
-    cameraRig->camera.commit();
-    fbNeedsClear = true;
-  }
-
   if (fbNeedsClear)
     framebuffer.resetAccumulation();
 
@@ -468,44 +464,13 @@ void GLFWOSPRayWindow::buildUI()
 
   ImGui::SliderFloat3("scale", trackingManager->multiplyBy, -3.0f, 3.0f);
   ImGui::SliderFloat3("pos offset", trackingManager->positionOffset, -3.0f, 3.0f);
+  ImGui::SliderFloat("leaning angle threshold °", &trackingManager->leaningAngleThreshold, 0.0f, 45.0f);
+  ImGui::SliderFloat3("leaning dir scale", trackingManager->leaningDirScaleFactor, -10.0f, 10.0f);
   ImGui::Separator();
 
   ImGui::Text("Last Tracking Results:");
-  {
-    std::string str = "head.x: " + std::to_string(windowState.camLocalPos.x);
-    ImGui::Text(str.c_str());
-  }
-  {
-    std::string str = "head.y: " + std::to_string(windowState.camLocalPos.y);
-    ImGui::Text(str.c_str());
-  }
-  {
-    std::string str = "head.z: " + std::to_string(windowState.camLocalPos.z);
-    ImGui::Text(str.c_str());
-  }
+  ImGui::Text("%s", trackingManager->getResultsInReadableForm().c_str());
   ImGui::Separator();
-
-  // // assume rendererType == OSPRayRendererType::SCIVIS
-  // static bool shadowsEnabled = false;
-  // if (ImGui::Checkbox("shadows", &shadowsEnabled)) {
-  //   renderer.setParam("shadows", shadowsEnabled);
-  //   addObjectToCommit(renderer.handle());
-  // }
-  // static bool visibleLights = false;
-  // if (ImGui::Checkbox("visibleLights", &visibleLights)) {
-  //   renderer.setParam("visibleLights", visibleLights);
-  //   addObjectToCommit(renderer.handle());
-  // }
-  // static int aoSamples = 0;
-  // if (ImGui::SliderInt("aoSamples", &aoSamples, 0, 64)) {
-  //   renderer.setParam("aoSamples", aoSamples);
-  //   addObjectToCommit(renderer.handle());
-  // }
-  // static float samplingRate = 1.f;
-  // if (ImGui::SliderFloat("volumeSamplingRate", &samplingRate, 0.001f, 2.f)) {
-  //   renderer.setParam("volumeSamplingRate", samplingRate);
-  //   addObjectToCommit(renderer.handle());
-  // }
 
   if (uiCallback) {
     ImGui::Separator();
@@ -526,9 +491,18 @@ void GLFWOSPRayWindow::refreshScene(bool resetCamera)
   world.commit();
 
   if (resetCamera) {
+    box3f bound = world.getBounds<box3f>();
+
     arcballCamera.reset(
-      new ArcballCamera(world.getBounds<box3f>(), windowSize));
+      new ArcballCamera(bound, windowSize));
     
     cameraRig->update(arcballCamera->transform());
+
+    if (mpiRank == 0) {
+      rkcommon::math::vec3f diag = bound.size();
+      trackingManager->leaningDirScaleFactor[0] = diag.x * 0.25f;
+      trackingManager->leaningDirScaleFactor[1] = diag.y * 0.25f;
+      trackingManager->leaningDirScaleFactor[2] = diag.z * 0.5f;
+    }
   }
 }

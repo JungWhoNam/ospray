@@ -3,6 +3,6 @@
     "portNumber": 8888,
     
     "multiplyBy": [0.001, -0.001, -0.001],
-
-    "positionOffset": [0.0, -0.1, 1.19]
+    "positionOffset": [0.0, -0.1, 1.19],
+    "leaningAngleThreshold": 1.0
 }
