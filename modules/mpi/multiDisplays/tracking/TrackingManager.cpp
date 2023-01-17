@@ -136,8 +136,8 @@ void TrackingManager::updateState(std::string message) {
 
     // check if the tracking data is reliable for further detections.
     if (state.confidences[K4ABT_JOINT_SPINE_NAVEL] < K4ABT_JOINT_CONFIDENCE_LOW ||
-        state.confidences[K4ABT_JOINT_HAND_LEFT] < K4ABT_JOINT_CONFIDENCE_LOW ||
-        state.confidences[K4ABT_JOINT_HAND_RIGHT] < K4ABT_JOINT_CONFIDENCE_LOW ||
+        state.confidences[K4ABT_JOINT_WRIST_LEFT] < K4ABT_JOINT_CONFIDENCE_LOW ||
+        state.confidences[K4ABT_JOINT_WRIST_RIGHT] < K4ABT_JOINT_CONFIDENCE_LOW ||
         state.confidences[K4ABT_JOINT_NECK] < K4ABT_JOINT_CONFIDENCE_LOW) {
         return;
     }
@@ -152,8 +152,8 @@ void TrackingManager::updateState(std::string message) {
     state.leaningDir.z *= leaningDirScaleFactor[2];
 
     // compute additional states (mode)
-    bool leftHandUp = state.positions[K4ABT_JOINT_SPINE_NAVEL].y < state.positions[K4ABT_JOINT_HAND_LEFT].y;
-    bool rightHandUp = state.positions[K4ABT_JOINT_SPINE_NAVEL].y < state.positions[K4ABT_JOINT_HAND_RIGHT].y;
+    bool leftHandUp = state.positions[K4ABT_JOINT_SPINE_NAVEL].y < state.positions[K4ABT_JOINT_WRIST_LEFT].y;
+    bool rightHandUp = state.positions[K4ABT_JOINT_SPINE_NAVEL].y < state.positions[K4ABT_JOINT_WRIST_RIGHT].y;
     state.mode = (leftHandUp && rightHandUp && state.leaningAngle > leaningAngleThreshold) ? INTERACTION_FLYING : INTERACTION_IDLE;
 }
 
