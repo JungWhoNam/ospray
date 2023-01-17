@@ -6,6 +6,7 @@ using namespace rkcommon::math;
 OffAxisProjection::OffAxisProjection(vec3f topLeftLocal,
                                      vec3f botLeftLocal, 
                                      vec3f botRightLocal, 
+                                     vec3f eyePos,
                                      vec4f mullion)
 {
   // currently only support perspective camera
@@ -38,6 +39,8 @@ OffAxisProjection::OffAxisProjection(vec3f topLeftLocal,
   botLeftLocal += normalize(tl - bl) * mullionBottom;
   botRightLocal += normalize(tl - bl) * mullionBottom;
 
+  // update the camera position
+  camera.setParam("position", eyePos);  
   // update aspect ratio and fovy
   camera.setParam("aspect", length(botRightLocal - botLeftLocal) / length(topLeftLocal - botLeftLocal));
   float angle = acos(dot(topLeftLocal, botLeftLocal) / (length(topLeftLocal) * length(botLeftLocal))) * 180.f / M_PI;

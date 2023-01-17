@@ -11,6 +11,7 @@ struct OffAxisProjection
   OffAxisProjection(vec3f topLeftLocal, 
                     vec3f botLeftLocal, 
                     vec3f botRightLocal, 
+                    vec3f eyePos = vec3f(0.f),
                     vec4f mullion = vec4f(0.f));
 
   void update(AffineSpace3f transform);

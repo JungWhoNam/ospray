@@ -186,9 +186,12 @@ GLFWOSPRayWindow::GLFWOSPRayWindow(nlohmann::ordered_json config, nlohmann::orde
     std::vector<float> valsBR = config[mpiRank]["botRight"];
     vec3f botRightLocal {valsBR[0], valsBR[1], valsBR[2]};
 
+    std::vector<float> valsEye = config[mpiRank]["eye"];
+    vec3f eyePos {valsEye[0], valsEye[1], valsEye[2]};
+
     vec4f mullion {config[mpiRank]["mullionLeft"], config[mpiRank]["mullionRight"], config[mpiRank]["mullionTop"], config[mpiRank]["mullionBottom"]};
 
-    cameraRig.reset(new OffAxisProjection(topLeftLocal, botLeftLocal, botRightLocal, mullion));
+    cameraRig.reset(new OffAxisProjection(topLeftLocal, botLeftLocal, botRightLocal, eyePos, mullion));
   }
 
   // OSPRay setup //
