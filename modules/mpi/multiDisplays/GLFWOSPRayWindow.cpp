@@ -32,6 +32,8 @@
 
 static bool g_quitNextFrame = false;
 
+static int g_whichScene = 0;
+
 static const std::vector<std::string> g_scenes = {"boxes_lit",
     "boxes",
     "cornell_box",
@@ -153,6 +155,17 @@ GLFWOSPRayWindow::GLFWOSPRayWindow(nlohmann::ordered_json config, nlohmann::orde
           break;
         case GLFW_KEY_D:
           activeWindow->trackingManager->close();
+          break;
+        case GLFW_KEY_LEFT: 
+        case GLFW_KEY_RIGHT:
+          g_whichScene += (key == GLFW_KEY_LEFT) ? -1 : 1;
+          if (g_whichScene >= static_cast<int>(g_scenes.size()))
+            g_whichScene = 0;
+          else if (g_whichScene < 0)
+            g_whichScene = g_scenes.size() - 1;
+          activeWindow->scene = g_scenes[g_whichScene];
+          activeWindow->windowState.sceneChanged = true;
+          activeWindow->windowState.scene = activeWindow->scene;
           break;
         }
       }
@@ -453,13 +466,12 @@ void GLFWOSPRayWindow::buildUI()
   ImGuiWindowFlags flags = ImGuiWindowFlags_AlwaysAutoResize;
   ImGui::Begin("press 'g' to hide/show UI", nullptr, flags);
 
-  static int whichScene = 0;
   if (ImGui::Combo("scene##whichScene",
-          &whichScene,
+          &g_whichScene,
           sceneUI_callback,
           nullptr,
           g_scenes.size())) {
-    scene = g_scenes[whichScene];
+    scene = g_scenes[g_whichScene];
     windowState.sceneChanged = true;
     windowState.scene = scene;
   }
