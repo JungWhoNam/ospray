@@ -45,6 +45,11 @@ OffAxisProjection::OffAxisProjection(vec3f topLeftLocal,
   camera.setParam("aspect", length(botRightLocal - botLeftLocal) / length(topLeftLocal - botLeftLocal));
   float angle = acos(dot(topLeftLocal, botLeftLocal) / (length(topLeftLocal) * length(botLeftLocal))) * 180.f / M_PI;
   camera.setParam("fovy", angle);
+  // set off-axis projection params
+  camera.setParam("offAxisMode", perspective->offAxisMode);
+  camera.setParam("topLeft", topLeftLocal);
+  camera.setParam("botLeft", botLeftLocal);
+  camera.setParam("botRight", botRightLocal);
   camera.commit();
 }
 
