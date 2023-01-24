@@ -37,6 +37,9 @@ int main(int argc, char **argv)
   nlohmann::ordered_json configTracking = readJSON(argc > 2 ? argv[2] : "config/tracking_settings.json");
   if (configTracking == nullptr)
     return 1;
+  nlohmann::ordered_json configScene = readJSON(argc > 3 ? argv[3] : "config/scene_settings.json");
+  // if (configScene == nullptr)
+  //   return 1;
 
   int mpiThreadCapability = 0;
   MPI_Init_thread(&argc, &argv, MPI_THREAD_MULTIPLE, &mpiThreadCapability);
@@ -57,7 +60,7 @@ int main(int argc, char **argv)
 
   initializeOSPRay(0, {}, false);
   {
-    auto glfwOSPRayWindow = make_unique<GLFWOSPRayWindow>(configDisplay, configTracking);
+    auto glfwOSPRayWindow = make_unique<GLFWOSPRayWindow>(configDisplay, configTracking, configScene);
     glfwOSPRayWindow->mainLoop();
     glfwOSPRayWindow.reset();
   }

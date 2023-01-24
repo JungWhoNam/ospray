@@ -34,7 +34,9 @@ struct WindowState
 class GLFWOSPRayWindow
 {
  public:
-  GLFWOSPRayWindow(nlohmann::ordered_json configDisplay, nlohmann::ordered_json configTracking);
+  GLFWOSPRayWindow(nlohmann::ordered_json configDisplay,
+                   nlohmann::ordered_json configTracking,
+                   nlohmann::ordered_json configScene);
 
   ~GLFWOSPRayWindow();
 

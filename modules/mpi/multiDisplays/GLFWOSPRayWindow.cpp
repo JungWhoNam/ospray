@@ -78,7 +78,9 @@ WindowState::WindowState()
     : quit(false), rigChanged(false), sceneChanged(false)
 {}
 
-GLFWOSPRayWindow::GLFWOSPRayWindow(nlohmann::ordered_json config, nlohmann::ordered_json configTracking)
+GLFWOSPRayWindow::GLFWOSPRayWindow(nlohmann::ordered_json config,
+                                   nlohmann::ordered_json configTracking,
+                                   nlohmann::ordered_json configScene)
 {
   MPI_Comm_rank(MPI_COMM_WORLD, &mpiRank);
   MPI_Comm_size(MPI_COMM_WORLD, &mpiWorldSize);
@@ -205,6 +207,18 @@ GLFWOSPRayWindow::GLFWOSPRayWindow(nlohmann::ordered_json config, nlohmann::orde
     vec4f mullion {config[mpiRank]["mullionLeft"], config[mpiRank]["mullionRight"], config[mpiRank]["mullionTop"], config[mpiRank]["mullionBottom"]};
 
     cameraRig.reset(new OffAxisProjection(topLeftLocal, botLeftLocal, botRightLocal, eyePos, mullion));
+  }
+
+  // set the scene to start
+  if (configScene != nullptr) {
+    std::string openingScene = configScene["scene"];
+    for (int i = 0; i < g_scenes.size(); i++) {
+      if (g_scenes[i] == openingScene) {
+        g_whichScene = i;
+        scene = g_scenes[i];
+        break;
+      }
+    }
   }
 
   // OSPRay setup //
