@@ -30,6 +30,10 @@ void PerspectiveCamera::commit()
       "stereoMode", getParam<int32_t>("stereoMode", OSP_STEREO_NONE));
   // the default 63.5mm represents the average human IPD
   interpupillaryDistance = getParam<float>("interpupillaryDistance", 0.0635f);
+  offAxisMode = getParam<bool>("offAxisMode", false);
+  topLeft = getParam<vec3f>("topLeft", vec3f(0.5f, 0.5f, 0.5f));
+  botLeft = getParam<vec3f>("botLeft", vec3f(0.5f, -0.5f, 0.5f));
+  botRight = getParam<vec3f>("botRight", vec3f(-0.5f, -0.5f, 0.5f));
 
   switch (stereoMode) {
   case OSP_STEREO_SIDE_BY_SIDE:
