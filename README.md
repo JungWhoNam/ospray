@@ -1,5 +1,5 @@
 # Extending OSPRay to support off-axis projection
-> This project is part of a larger project called [Immersive OSPray](../README.md).
+> This project is part of a larger project called [Immersive OSPray](https://github.com/jungwhonam-tacc/Whitepaper).
 
 We extend [OSPRay v2.10.0](https://github.com/ospray/ospray/releases/tag/v2.11.0) to support off-axis projection enabling us to display a single, coherent 3D virtual environemnt on non-planar, tiled-display walls.
 
