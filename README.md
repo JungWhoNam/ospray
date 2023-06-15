@@ -1,13 +1,13 @@
 # Extending OSPRay to support off-axis projection
-> This project is part of a larger project called [Immersive OSPray](https://github.com/jungwhonam-tacc/Whitepaper).
+> This project is part of a larger project called [Immersive OSPray](https://github.com/jungwhonam/Whitepaper).
 
 We extend [OSPRay v2.10.0](https://github.com/ospray/ospray/releases/tag/v2.11.0) to support off-axis projection enabling us to display a single, coherent 3D virtual environemnt on non-planar, tiled-display walls.
 
 ## Building OSPRay extension
-> Make sure to use the branch [v2.11.0-alpha.x](https://github.com/jungwhonam-tacc/ospray/tree/v2.11.0-alpha.x).
+> Make sure to use the branch [v2.11.0-alpha.x](https://github.com/jungwhonam/ospray/tree/v2.11.0-alpha.x).
 
 ```
-git clone https://github.com/jungwhonam-tacc/ospray.git
+git clone https://github.com/jungwhonam/ospray.git
 cd ospray
 
 # switch to the alpha branch
@@ -55,11 +55,11 @@ if (offAxisMode) {
 ```
 
 ## Bug Fixes
-This alpha version fixes few bugs. See the list in https://github.com/jungwhonam-tacc/ospray/issues.
-* problems with snappy: https://github.com/jungwhonam-tacc/ospray/issues/1
-* problems with finding libtbb: https://github.com/jungwhonam-tacc/ospray/issues/2
-* problems with finding openvkl: https://github.com/jungwhonam-tacc/ospray/issues/2
-* program crashes when pressing 'g': https://github.com/jungwhonam-tacc/ospray/issues/4
+This alpha version fixes few bugs. See the list in https://github.com/jungwhonam/ospray/issues.
+* problems with snappy: https://github.com/jungwhonam/ospray/issues/1
+* problems with finding libtbb: https://github.com/jungwhonam/ospray/issues/2
+* problems with finding openvkl: https://github.com/jungwhonam/ospray/issues/2
+* program crashes when pressing 'g': https://github.com/jungwhonam/ospray/issues/4
 
 ## Future Work
 The off-axis projection feature is built on top of ```PerspectiveCamera.cpp```. Depending on the current mode, there are variables not being used. We plan to create another struct object, called ```OffAixProjectionCamera```, to keep the original camera intact and move the off-axis projection-related stuff.
